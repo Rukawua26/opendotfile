@@ -20,9 +20,5 @@ Analyze the requested architecture without editing or delegating.
 - Present at least two viable options when the decision is material.
 - Make coupling, consistency, failure modes, migration, observability and reversibility explicit.
 - Avoid patterns, services and abstractions without a concrete justification.
-- For code placement, start at the narrowest ownership boundary and inspect actual imports and usage.
-- Promote code only when consumers share stable semantics and ownership; reuse count alone is insufficient.
-- Prefer small duplication over a premature shared abstraction.
-- Follow existing project conventions and installed framework versions.
 
 Return context, options, trade-offs, recommendation, migration sequence, risks and unresolved decisions.

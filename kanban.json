@@ -169,5 +169,32 @@
     "status": "done",
     "created": "2026-07-21T18:22:30.324Z",
     "updated": "2026-07-21T18:22:36.937Z"
+  },
+  {
+    "id": "t1784952073359_1",
+    "title": "Aprobar y fusionar PR #6",
+    "description": "Conseguir una aprobación humana externa y fusionar https://github.com/Rukawua26/opencode-ecosystem/pull/6 sin omitir la protección de main.",
+    "priority": "high",
+    "status": "todo",
+    "created": "2026-07-25T04:01:13.359Z",
+    "updated": "2026-07-25T04:01:13.359Z"
+  },
+  {
+    "id": "t1784952073385_2",
+    "title": "Publicar memory-adapter v1.3.0",
+    "description": "Regenerar/configurar un token npm real, añadirlo como NPM_TOKEN y publicar opencode-memory-adapter@1.3.0.",
+    "priority": "medium",
+    "status": "todo",
+    "created": "2026-07-25T04:01:13.385Z",
+    "updated": "2026-07-25T04:01:13.385Z"
+  },
+  {
+    "id": "t1784952094703_3",
+    "title": "Revocar PAT expuesto",
+    "description": "Revocar el PAT de GitHub compartido en la conversación y regenerarlo con permisos mínimos antes de volver a usarlo.",
+    "priority": "high",
+    "status": "todo",
+    "created": "2026-07-25T04:01:34.703Z",
+    "updated": "2026-07-25T04:01:34.703Z"
   }
 ]

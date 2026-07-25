@@ -13,6 +13,31 @@
     "__HOME__/.config/opencode/plugins/checkpoints.js",
     "__HOME__/.config/opencode/plugins/kanban.js",
     "__HOME__/.config/opencode/plugins/validator.js",
-    "__HOME__/.config/opencode/plugins/session-metrics.js"
-  ]
+    "__HOME__/.config/opencode/plugins/session-metrics.js",
+    "__HOME__/.config/opencode/plugins/auto-memory.js"
+  ],
+  "mcp": {
+    "memory-adapter": {
+      "type": "local",
+      "command": ["node", "__HOME__/.config/opencode/mcp/memory-adapter/src/mcp-server.js"],
+      "enabled": true,
+      "timeout": 30000
+    },
+    "local-model-router": {
+      "type": "local",
+      "command": ["node", "__HOME__/.config/opencode/mcp/local-model-router.js"],
+      "enabled": true,
+      "timeout": 150000
+    },
+    "context7": {
+      "type": "local",
+      "command": ["npx", "-y", "@upstash/context7-mcp@3.2.4"],
+      "enabled": true
+    },
+    "diagram-generator": {
+      "type": "local",
+      "command": ["npx", "-y", "mcp-diagram-generator@1.2.0"],
+      "enabled": true
+    }
+  }
 }
