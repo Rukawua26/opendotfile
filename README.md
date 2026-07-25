@@ -2,41 +2,55 @@
 
 Configuración portátil de OpenCode. Clona, ejecuta `install.sh`, y tienes tu entorno completo en cualquier PC.
 
+## Últimas actualizaciones
+
+- `Software Architect` decide la ubicación del código por ownership, imports y uso real; no promueve abstracciones solo por cantidad de consumidores.
+- 16 agentes activos seleccionados desde una biblioteca de más de 200 agentes.
+- Tres perfiles (`work`, `personal`, `light`) con compactación y límites de salida ajustados al coste de cada tarea.
+- Enrutamiento a modelos locales mediante `local-model-router`; MCP costosos desactivados por defecto.
+
 ## Qué incluye
 
 | Categoría | Cantidad | Ubicación |
 |-----------|----------|-----------|
-| Agents activos | 35 | `agents/` (symlinks a `agents-library/`) |
+| Agents activos | 16 | `agents/` (symlinks a `agents-library/`) |
 | Agents template | 200+ | `agents-library/` |
-| Skills | 19 | `skills/` (copia a `~/opencode-custom/skills`) |
-| Plugins | 8 | `plugins/` |
-| MCP servers | 3 | `mcp/` (cheap-llm, context7, diagram-generator) |
-| Perfiles | 2 | `profiles/work`, `profiles/personal` |
+| Skills | 20 | `skills/` (copia a `~/opencode-custom/skills`) |
+| Plugins disponibles | 8 | `plugins/` |
+| Integraciones MCP | 5 | local models, memoria, docs, diagramas y navegador |
+| Perfiles | 3 | `profiles/work`, `profiles/personal`, `profiles/light` |
 | Rules globales | 1 | `AGENTS.md` (copia a `~/AGENTS.md`) |
 
 ### Plugins
 
-- `memory.js` — memoria persistente
-- `memory-v2.js` — engramas SQLite/FTS5
 - `personalities.js` — personalidades vía SOUL.md
 - `guardrails.js` — anti-loop y detección de errores
 - `checkpoints.js` — snapshots antes de edits
 - `kanban.js` — tablero de tareas
 - `sandbox.js` — ejecución aislada en Docker
 - `validator.js` — validación de API keys
+- `session-metrics.js` — métricas de sesiones, tokens y delegaciones
+- `auto-memory.js` — captura de decisiones para `memory-adapter` en el perfil `work`
 
 ### Skills
 
-`api-docs-resolver`, `audit-pbot`, `audit-vozart`, `backend-node-patterns`, `code-reviewer-v2`, `debug-bugs`, `frontend-patterns-react19`, `harness-trigger`, `loop-engineering`, `multiagent-orchestrator`, `project-context-refresh`, `sdd-implement`, `sdd-plan`, `sdd-specify`, `sdd-tasks`, `security-review`, `spec-as-source`, `tdd-workflow`, `verification-loop`
+`accessibility-audit`, `code-reviewer-v2`, `debug-bugs`, `defuddle`, `inbox-triage`, `json-canvas`, `local-model-router`, `loop-engineering`, `modes`, `multiagent-orchestrator`, `obsidian-bases`, `obsidian-cli`, `obsidian-markdown`, `prompts`, `sdd-implement`, `sdd-plan`, `sdd-specify`, `sdd-tasks`, `security-review`, `tdd-workflow`
+
+### MCP
+
+- `local-model-router` — Ollama local bajo demanda; activo en la configuración base.
+- `memory-adapter` — memoria técnica; activo en `work`.
+- `context7` y `diagram-generator` — activos en `work`, desactivados por defecto.
+- `playwright` — disponible pero desactivado por defecto.
 
 ### Perfiles
 
-| | `work` | `personal` |
-|---|--------|-----------|
-| Modelo | gemini-2.5-flash | gemini-2.5-flash-lite |
-| Plugins | 6 | 5 (sin kanban) |
-| tail_turns | 4 | 3 |
-| Tokens | 48k | 32k |
+| | `work` | `personal` | `light` |
+|---|---|---|---|
+| Modelo | `openai/gpt-5.6-sol` | `openai/gpt-5.4-mini` | `openai/gpt-5.4-mini` |
+| Plugins | 7 | 5 | 4 |
+| `tail_turns` | 6 | 4 | 3 |
+| Salida de tools | 200 líneas / 8 KiB | 120 líneas / 8 KiB | 80 líneas / 4 KiB |
 
 ## Instalación en otra PC
 
@@ -61,19 +75,22 @@ Después: edita `~/.config/opencode/.env` con tus API keys y reinicia OpenCode.
 
 - `.env` nunca se sube (está en `.gitignore`)
 - `node_modules/` no se sube
-- `memory.json` y `kanban.json` se suben (estado portable)
+- `memory.db` y `kanban.json` se suben (estado portable)
 
 ## Perfiles
 
 ```bash
-opencode --profile work      # Producción completa
-opencode --profile personal   # Económico
+opencode-profile   # menú interactivo
+opencode-work      # perfil completo
+opencode-personal  # perfil económico
 ```
 
 ## Archivos de estado
 
-- `memory.json` — memoria persistente del agente
+- `memory.db` — memoria técnica portable
 - `kanban.json` — tablero de tareas
+
+Revisa los archivos de estado antes de publicar un fork, ya que pueden contener información de trabajo.
 
 ---
 
