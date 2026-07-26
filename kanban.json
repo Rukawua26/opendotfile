@@ -4,54 +4,54 @@
     "title": "VozArt: Mejorar selectores de AI provider",
     "description": "VozArt tiene abstracción multi-provider en server/ai/. Revisar integración y añadir tests para cada provider (Gemini, OpenAI, Anthropic, Ollama)",
     "priority": "high",
-    "status": "todo",
+    "status": "done",
     "created": "2026-06-15T21:26:10.862Z",
-    "updated": "2026-06-15T21:26:10.862Z"
+    "updated": "2026-07-26T03:23:38.394Z"
   },
   {
     "id": "t1781558771713_2",
     "title": "OSIRIS: Revisar estabilidad del mapa 3D",
     "description": "OSIRIS usa MapLibre GL con 20+ capas de datos. Verificar rendimiento y memory leaks en la visualización 3D",
     "priority": "medium",
-    "status": "todo",
+    "status": "blocked",
     "created": "2026-06-15T21:26:11.713Z",
-    "updated": "2026-06-15T21:26:11.713Z"
+    "updated": "2026-07-26T03:23:38.605Z"
   },
   {
     "id": "t1781558772457_3",
     "title": "Nuclear: Explorar plugins SDK",
     "description": "Nuclear tiene un SDK de plugins. Documentar cómo crear plugins y examples de integración",
     "priority": "low",
-    "status": "todo",
+    "status": "done",
     "created": "2026-06-15T21:26:12.457Z",
-    "updated": "2026-06-15T21:26:12.457Z"
+    "updated": "2026-07-26T03:23:38.694Z"
   },
   {
     "id": "t1781558773310_4",
     "title": "OpenCode: Mejorar SOUL.md con instrucciones detalladas",
     "description": "Refinar el archivo de personalidad SOUL.md con preferencias específicas de flujo de trabajo, tono, y comportamiento",
     "priority": "medium",
-    "status": "todo",
+    "status": "done",
     "created": "2026-06-15T21:26:13.310Z",
-    "updated": "2026-06-15T21:26:13.310Z"
+    "updated": "2026-07-26T03:23:38.628Z"
   },
   {
     "id": "t1781558774372_5",
     "title": "VozArt: Añadir modo offline/local",
     "description": "VozArt tiene un \"modo local\" esbozado. Implementar detección offline, cola de operaciones y sincronización cuando vuelva la conexión",
     "priority": "medium",
-    "status": "todo",
+    "status": "done",
     "created": "2026-06-15T21:26:14.372Z",
-    "updated": "2026-06-15T21:26:14.372Z"
+    "updated": "2026-07-26T03:23:38.486Z"
   },
   {
     "id": "t1781558775058_6",
     "title": "Sistema: Migrar más APIs a OpenCode",
     "description": "Configurar API keys de OpenAI y Anthropic para tener todos los providers disponibles en OpenCode",
     "priority": "low",
-    "status": "todo",
+    "status": "blocked",
     "created": "2026-06-15T21:26:15.058Z",
-    "updated": "2026-06-15T21:26:15.058Z"
+    "updated": "2026-07-26T03:23:38.524Z"
   },
   {
     "id": "t1781819153507_1",
@@ -67,36 +67,36 @@
     "title": "Viernes 10AM: Weekly Review — vaciar inbox y mantener vault",
     "description": "Ritual semanal: abrir templates/weekly-review.md, triaje de inbox con @obsidian-markdown, revisar notas huérfanas, tags pendientes, wikilinks rotos, kanban, y mantenimiento (agentes, canvases, backup config).",
     "priority": "high",
-    "status": "todo",
+    "status": "done",
     "created": "2026-07-13T22:12:41.956Z",
-    "updated": "2026-07-13T22:12:41.956Z"
+    "updated": "2026-07-26T03:23:38.752Z"
   },
   {
     "id": "t1784249973327_1",
     "title": "Dashboard de listas inteligentes",
     "description": "Crear nuevo dashboard GHL con métricas semanales y mensuales de contactos, conversiones, origen y listas inteligentes.",
     "priority": "high",
-    "status": "todo",
+    "status": "done",
     "created": "2026-07-17T00:59:33.327Z",
-    "updated": "2026-07-17T00:59:33.327Z"
+    "updated": "2026-07-26T03:23:38.439Z"
   },
   {
     "id": "t1784584503030_1",
     "title": "Integrar README y evidencia SDD de JavaScript",
     "description": "Actualizar README raíz, feature 002 y comandos genéricos de CONTRIBUTING; ejecutar verificación enfocada.",
     "priority": "medium",
-    "status": "todo",
+    "status": "done",
     "created": "2026-07-20T21:55:03.030Z",
-    "updated": "2026-07-20T21:55:03.030Z"
+    "updated": "2026-07-26T03:23:38.710Z"
   },
   {
     "id": "t1784589086721_2",
     "title": "Implementar feature 003 Java Language",
     "description": "Actualizar contrato SDD, crear 26 temas y ejemplos Java 21, checker y documentación; verificar con checker, validate.py, lookups y tests Python.",
     "priority": "high",
-    "status": "todo",
+    "status": "done",
     "created": "2026-07-20T23:11:26.721Z",
-    "updated": "2026-07-20T23:11:26.722Z"
+    "updated": "2026-07-26T03:23:38.359Z"
   },
   {
     "id": "t1784643840836_1",
@@ -175,26 +175,26 @@
     "title": "Aprobar y fusionar PR #6",
     "description": "Conseguir una aprobación humana externa y fusionar https://github.com/Rukawua26/opencode-ecosystem/pull/6 sin omitir la protección de main.",
     "priority": "high",
-    "status": "todo",
+    "status": "done",
     "created": "2026-07-25T04:01:13.359Z",
-    "updated": "2026-07-25T04:01:13.359Z"
+    "updated": "2026-07-26T03:23:38.305Z"
   },
   {
     "id": "t1784952073385_2",
     "title": "Publicar memory-adapter v1.3.0",
     "description": "Regenerar/configurar un token npm real, añadirlo como NPM_TOKEN y publicar opencode-memory-adapter@1.3.0.",
     "priority": "medium",
-    "status": "todo",
+    "status": "blocked",
     "created": "2026-07-25T04:01:13.385Z",
-    "updated": "2026-07-25T04:01:13.385Z"
+    "updated": "2026-07-26T03:23:38.575Z"
   },
   {
     "id": "t1784952094703_3",
     "title": "Revocar PAT expuesto",
     "description": "Revocar el PAT de GitHub compartido en la conversación y regenerarlo con permisos mínimos antes de volver a usarlo.",
     "priority": "high",
-    "status": "todo",
+    "status": "blocked",
     "created": "2026-07-25T04:01:34.703Z",
-    "updated": "2026-07-25T04:01:34.703Z"
+    "updated": "2026-07-26T03:23:38.261Z"
   }
 ]
