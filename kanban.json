@@ -196,5 +196,14 @@
     "status": "blocked",
     "created": "2026-07-25T04:01:34.703Z",
     "updated": "2026-07-26T03:23:38.261Z"
+  },
+  {
+    "id": "t1785117965279_1",
+    "title": "Evaluar control center con grid real",
+    "description": "Fase futura: evaluar Quickshell/AGS/Eww para reemplazar o complementar el panel Waybar con un control center de layout preciso, grid real, iconos vibrantes diferenciados y toggle SUPER+W, conservando la paleta actual y el flujo estable.",
+    "priority": "medium",
+    "status": "todo",
+    "created": "2026-07-27T02:06:05.279Z",
+    "updated": "2026-07-27T02:06:05.279Z"
   }
 ]
