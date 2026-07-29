@@ -191,6 +191,25 @@ flowchart LR
 4. 🔨 **Implement**: Subagentes ejecutan tareas aisladas
 5. 🔍 **Verify**: Verificador confirma con evidencia independiente
 
+### Organic RDD
+
+Organic RDD revisa el candidato despues de implementarlo y adapta la ceremonia al riesgo real:
+
+- **Tier 0**: documentacion, sin revision adicional
+- **Tier 1**: skills y commands, `code-review` + verificacion
+- **Tier 2**: configuracion central, `code-review` + `verifier` + verificacion
+- **Tier 3**: runtime, permisos, seguridad, persistencia o gates; agrega lentes especializadas
+
+Los receipts canonicos viven en `~/.local/share/opencode/plugins-data/organic-rdd/`. El gate es manual en el MVP. `review mode=disabled` produce `unmanaged`, nunca `approved`.
+
+Limitaciones MVP:
+
+- El projection principal es `explicit-files`: el receipt certifica los archivos listados, no todo el workspace.
+- En repos Git, `review_start` guarda `git.head`, archivos cambiados y advertencias cuando hay cambios fuera del manifest.
+- `review_gate` mantiene compatibilidad por defecto; usa `strict_manifest=true` para fallar si Git detecta archivos omitidos.
+- Las eliminaciones Git se reportan como `manifest_has_deletions`; `explicit-files` no puede hashear archivos eliminados, asi que strict mode las bloquea hasta una futura proyeccion Git.
+- No se instalan hooks automaticamente y el store local confia en el mismo usuario del sistema.
+
 ---
 
 <br/>
@@ -370,8 +389,8 @@ nano ~/.config/opencode/.env
   <tr>
     <td><img src="https://img.shields.io/badge/session--metrics.js-ec4899?style=for-the-badge&labelColor=0f172a" alt="metrics"/></td>
     <td><sub>Métricas de sesiones y tokens</sub></td>
-    <td><img src="https://img.shields.io/badge/auto--memory.js-f59e0b?style=for-the-badge&labelColor=0f172a" alt="memory"/></td>
-    <td><sub>Captura de decisiones para memory-adapter</sub></td>
+    <td><img src="https://img.shields.io/badge/organic--rdd.js-f59e0b?style=for-the-badge&labelColor=0f172a" alt="organic-rdd"/></td>
+    <td><sub>Review por riesgo con receipts y gates</sub></td>
   </tr>
 </table>
 </div>
@@ -489,7 +508,7 @@ opencode-config-backup/
 │   ├── sandbox.js                # 🐳 Docker
 │   ├── validator.js              # 🔑 API keys
 │   ├── session-metrics.js        # 📊 Métricas
-│   └── auto-memory.js            # 🧠 Memoria
+│   └── organic-rdd.js            # Review por riesgo
 ├── 📡 mcp/                       # 5 servidores MCP
 │   ├── local-model-router.js     # 🔀 Router Ollama
 │   └── memory-adapter/           # 💾 Memoria persistente

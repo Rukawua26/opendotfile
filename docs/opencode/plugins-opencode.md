@@ -9,7 +9,7 @@ ultima-actualizacion: 2026-07-13
 # Plugins OpenCode
 
 ## Resumen
-7 plugins modulares coordinados vía la API de OpenCode. Cada plugin añade capacidades específicas.
+8 plugins modulares coordinados vía la API de OpenCode. Cada plugin añade capacidades específicas.
 
 | Plugin | Archivo | Función | Tools/Hooks |
 |--------|---------|---------|-------------|
@@ -21,6 +21,7 @@ ultima-actualizacion: 2026-07-13
 | kanban.js | `plugins/kanban.js` | Tablero de tareas CRUD | `kanban_create`, `kanban_list`, `kanban_update`, `kanban_delete` |
 | sandbox.js | `plugins/sandbox.js` | Ejecución aislada en Docker | `sandbox_exec` |
 | validator.js | `plugins/validator.js` | Validación de API keys al inicio | Hook startup |
+| organic-rdd.js | `plugins/organic-rdd.js` | Review por riesgo con receipts globales y gate manual | `review_mode_get`, `review_mode_set`, `review_start`, `review_status`, `review_capture`, `review_verify`, `review_finalize`, `review_gate` |
 
 ## Almacenamiento
 | Datos | Ubicación | Formato |
@@ -30,7 +31,7 @@ ultima-actualizacion: 2026-07-13
 | Sesiones | Tabla `sessions` dentro de `memory.db` | SQLite |
 
 ## Integración
-- `opencode.jsonc` → registra los 7 plugins
+- `opencode.jsonc` → registra los 8 plugins
 - Inyectan en `chat.system.transform` al inicio de sesión
 
 ## Ver también

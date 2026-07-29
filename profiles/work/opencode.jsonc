@@ -7,6 +7,16 @@
     "tail_turns": 6
   },
   "tool_output": { "max_lines": 200, "max_bytes": 8192 },
+  "permission": {
+    "review_mode_get": "allow",
+    "review_status": "allow",
+    "review_mode_set": "ask",
+    "review_start": "ask",
+    "review_capture": "ask",
+    "review_verify": "ask",
+    "review_finalize": "ask",
+    "review_gate": "ask"
+  },
   "plugin": [
     "__HOME__/.config/opencode/plugins/personalities.js",
     "__HOME__/.config/opencode/plugins/guardrails.js",
@@ -14,7 +24,9 @@
     "__HOME__/.config/opencode/plugins/kanban.js",
     "__HOME__/.config/opencode/plugins/validator.js",
     "__HOME__/.config/opencode/plugins/session-metrics.js",
-    "__HOME__/.config/opencode/plugins/auto-memory.js"
+    "__HOME__/.config/opencode/plugins/auto-memory.js",
+    "__HOME__/.config/opencode/plugins/organic-rdd.js",
+    "__HOME__/.config/opencode/plugins/hooks.js"
   ],
   "mcp": {
     "memory-adapter": {

@@ -7,9 +7,11 @@ const DATA_DIR = join(HOME, ".local/share/opencode/plugins-data");
 const LOG_FILE = join(DATA_DIR, "session-metrics.jsonl");
 const sessions = new Map();
 const recorded = new Set();
+const broadPatterns = [/^\*{2,}$/, /^\*\*\//, /^\*\./, /^src\//, /^packages\//, /^app\//, /^lib\//, /^test/];
+const loopThreshold = 10;
 
 function stateFor(sessionID) {
-  if (!sessions.has(sessionID)) sessions.set(sessionID, { tools: 0, delegations: 0, compactions: 0 });
+  if (!sessions.has(sessionID)) sessions.set(sessionID, { tools: 0, delegations: 0, compactions: 0, reads_broad: 0, effort_mode: null, verified: false, loop_detected: false, lastTool: null, sameToolCount: 0 });
   return sessions.get(sessionID);
 }
 
@@ -28,6 +30,17 @@ export const sessionMetricsPlugin = async () => ({
     const state = stateFor(input.sessionID);
     state.tools += 1;
     if (input.tool === "task") state.delegations += 1;
+    if (input.tool === "Read") {
+      const path = String(input.args?.path || "");
+      if (broadPatterns.some((p) => p.test(path))) state.reads_broad += 1;
+    }
+    if (input.tool === state.lastTool) {
+      state.sameToolCount += 1;
+      if (state.sameToolCount >= loopThreshold) state.loop_detected = true;
+    } else {
+      state.sameToolCount = 0;
+    }
+    state.lastTool = input.tool;
   },
   event: async ({ event }) => {
     if (event.type === "session.compacted") {
@@ -38,13 +51,20 @@ export const sessionMetricsPlugin = async () => ({
       sessions.delete(event.properties.sessionID);
       return;
     }
-    if (event.type !== "message.updated") return;
-    const info = event.properties.info;
-    if (recorded.has(info.id)) return;
-    const metric = metricFromMessage(info, stateFor(event.properties.sessionID));
-    if (!metric) return;
-    recorded.add(info.id);
-    appendMetric(metric);
+    if (event.type === "message.updated") {
+      const info = event.properties.info;
+      if (recorded.has(info.id)) return;
+      const state = stateFor(event.properties.sessionID);
+      if (info.role === "user" && typeof info.text === "string") {
+        const effortMatch = info.text.match(/\/effort\s+(low|medium|max)/);
+        if (effortMatch) state.effort_mode = effortMatch[1];
+        if (info.text.includes("execute-verified") || info.text.includes("/verify")) state.verified = true;
+      }
+      const metric = metricFromMessage(info, state);
+      if (!metric) return;
+      recorded.add(info.id);
+      appendMetric(metric);
+    }
   },
 });
 

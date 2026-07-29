@@ -22,6 +22,9 @@ Rules:
 - Use the loop: implement -> verify -> correct -> verify until the relevant checks pass or a blocker is documented.
 - Before marking a task complete, run an anti-hallucination check: read the modified file sections, confirm every API/type/file exists in real code, and confirm no behavior was added outside `spec.md` acceptance criteria.
 - Add `Verificacion Anti-Alucinacion` to `verify.md` with concrete evidence.
+- After a candidate exists, use `review_start` with the exact modified files when Organic RDD tools are available.
+- Tier 0 requires no additional ceremony. For Tier 1-3, capture only reviews actually performed, record executed checks with `review_verify`, then finalize and gate the receipt.
+- A disabled Organic RDD result is unmanaged; never report it as approved.
 
 Expected result:
 

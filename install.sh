@@ -4,14 +4,34 @@ set -euo pipefail
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_DIR="${HOME}/.config/opencode"
 BACKUP_DIR="${HOME}/.config/opencode.backup.$(date +%Y%m%d-%H%M%S)"
-SKILLS_DIR="${HOME}/opencode-custom/skills"
+CUSTOM_DIR="${HOME}/opencode-custom"
+SKILLS_DIR="${CUSTOM_DIR}/skills"
+SPEC_DIR="${CUSTOM_DIR}/spec"
 
 if [ ! -d "${SOURCE_DIR}/.git" ]; then
   echo "ERROR: Ejecuta desde la raiz del repositorio clonado."
   exit 1
 fi
 
-mkdir -p "${HOME}/.config" "${SKILLS_DIR}"
+mkdir -p "${HOME}/.config"
+
+for path in "${TARGET_DIR}" "${CUSTOM_DIR}"; do
+  if [ -L "${path}" ]; then
+    echo "ERROR: se rechaza directorio symlink durante instalacion: ${path}"
+    exit 1
+  fi
+done
+mkdir -p "${CUSTOM_DIR}"
+if [ ! -O "${CUSTOM_DIR}" ]; then
+  echo "ERROR: el usuario actual no es propietario de ${CUSTOM_DIR}"
+  exit 1
+fi
+for path in "${SKILLS_DIR}" "${SPEC_DIR}"; do
+  if [ -L "${path}" ]; then
+    echo "ERROR: se rechaza destino symlink durante instalacion: ${path}"
+    exit 1
+  fi
+done
 
 # Backup de config existente
 if [ -d "${TARGET_DIR}" ]; then
@@ -25,7 +45,7 @@ for item in "${SOURCE_DIR}"/* "${SOURCE_DIR}"/.[!.]* "${SOURCE_DIR}"/..?*; do
   [ -e "${item}" ] || continue
   name=$(basename "${item}")
   case "${name}" in
-    .git|node_modules|.env|README.md|install.sh|skills) continue ;;
+    .git|node_modules|.env|README.md|install.sh|skills|spec) continue ;;
   esac
   cp -a "${item}" "${TARGET_DIR}/"
 done
@@ -34,6 +54,11 @@ done
 rm -rf "${SKILLS_DIR}"
 mkdir -p "$(dirname "${SKILLS_DIR}")"
 cp -a "${SOURCE_DIR}/skills" "${SKILLS_DIR}"
+
+# Restore specs to the same canonical source consumed by the backup job.
+rm -rf "${SPEC_DIR}"
+mkdir -p "$(dirname "${SPEC_DIR}")"
+cp -a "${SOURCE_DIR}/spec" "${SPEC_DIR}"
 
 # Copiar AGENTS.md a ~/AGENTS.md
 cp "${SOURCE_DIR}/AGENTS.md" "${HOME}/AGENTS.md"
@@ -84,6 +109,7 @@ echo ""
 echo "Instalacion completada:"
 echo "  Config: ${TARGET_DIR}"
 echo "  Skills: ${SKILLS_DIR}"
+echo "  Specs: ${SPEC_DIR}"
 echo "  Rules: ${HOME}/AGENTS.md"
 echo ""
 echo "Reinicia OpenCode para que cargue la nueva configuracion."

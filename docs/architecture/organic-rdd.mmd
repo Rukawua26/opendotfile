@@ -1,0 +1,14 @@
+flowchart LR
+  C[Candidate bytes] --> S[review_start]
+  S --> H[SHA-256 identity]
+  H --> T{Risk tier}
+  T -->|Tier 0| A[Approved fast path]
+  T -->|Tier 1-3| R[Required review lenses]
+  R --> V[Verification evidence]
+  V --> F[review_finalize]
+  F -->|Fresh and passing| A
+  F -->|Missing, failed, or stale| B[Blocked]
+  A --> G[Manual review_gate]
+  M{Review mode} -->|managed| S
+  M -->|disabled| U[Unmanaged / skipped]
+  U -. never approved .-> G

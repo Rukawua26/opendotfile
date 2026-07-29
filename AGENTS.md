@@ -23,6 +23,16 @@
 - En features pequenas puedes iterar sin preguntar siempre que respetes criterios de aceptacion.
 - Si una tarea escala a runtime critico o cambia contratos publicos, pausa y pregunta.
 
+# Organic Review-Driven Development
+
+- Organic RDD complementa SDD: la spec gobierna la construccion y el receipt gobierna la revision del candidato ya producido.
+- Clasifica por impacto, no por cantidad de lineas: Tier 0 documentacion, Tier 1 guidance/skills/commands, Tier 2 configuracion central y Tier 3 runtime, permisos, seguridad, persistencia o gates.
+- Usa `review_start` solo con la lista exacta de archivos candidatos. Toda evidencia queda ligada al hash de esos bytes.
+- Tier 0 no requiere ceremonia. Tier 1-3 requieren las lentes y verificacion que indique el receipt.
+- `review_gate` solo valida evidencia existente; nunca lanza revisores ni tests.
+- `review mode=disabled` omite el control RDD pero deja el resultado `unmanaged`; nunca significa `approved`.
+- Si el candidate cambia, el receipt queda stale y debe iniciarse una revision nueva.
+
 # Multiagentes (Cuando Escalar)
 
 - Para features que cruzan 3+ capas (backend+frontend+infra), usar patron Coordinador/Implementador/Verificador.
