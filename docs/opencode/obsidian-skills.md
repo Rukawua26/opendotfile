@@ -9,7 +9,7 @@ ultima-actualizacion: 2026-07-13
 # Obsidian Skills
 
 ## Resumen
-Skills de `kepano/obsidian-skills` instalados en la ruta activa `~/opencode-custom/skills/`, configurada en `opencode.jsonc`. OpenCode los descubre mediante cada archivo `SKILL.md` después de reiniciar.
+Skills de `kepano/obsidian-skills` disponibles en la ruta integrada `~/.opencode/skills/`. OpenCode los descubre mediante cada archivo `SKILL.md` después de reiniciar.
 
 | Skill | Descripción | Status |
 |-------|-------------|--------|
@@ -21,7 +21,7 @@ Skills de `kepano/obsidian-skills` instalados en la ruta activa `~/opencode-cust
 | inbox-triage | Clasificar notas del inbox y sugerir destino sin moverlas | Instalado |
 
 ## Instalación
-El repositorio fuente está en `~/.opencode/skills/obsidian-skills/`; sus cinco skills y `inbox-triage` están copiados a `~/opencode-custom/skills/`, que es la ruta cargada por OpenCode.
+El repositorio fuente está en `~/.opencode/skills/obsidian-skills/`; sus cinco skills y `inbox-triage` se mantienen en esa ruta integrada. Se eliminaron copias idénticas de `~/opencode-custom/skills/` para evitar avisos de skills duplicadas.
 
 ## Especificación
 Siguen el standard [Agent Skills](https://agentskills.io/specification) — compatibles con Claude Code, Codex y OpenCode.

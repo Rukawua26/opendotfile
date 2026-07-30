@@ -7,7 +7,7 @@ No se cargan automáticamente: se aplican con `opencode-inject apply <nombre>`.
 
 | Archivo | Descripción | Condición |
 |---|---|---|
-| `01.providers.openai.jsonc` | Usar OpenAI GPT-4o-mini como modelo | `OPENAI_API_KEY` en `.env` |
+| `01.providers.openai.jsonc` | Usar OpenAI GPT-5.4-mini como modelo | `OPENAI_API_KEY` en `.env` |
 | `02.providers.anthropic.jsonc` | Usar Anthropic Claude Sonnet | `ANTHROPIC_API_KEY` en `.env` |
 | `03.plugins.sandbox.jsonc` | Activar sandbox Docker | Docker instalado |
 

@@ -1,21 +1,24 @@
 ---
-description: Establece el modo de esfuerzo para la sesion actual: low, medium (default) o max.
+description: Declara el modo de esfuerzo para la sesion actual: low, medium (default) o max.
 ---
 
 # Effort Control
 
-Establece el modo de esfuerzo para esta sesion.
+Declara el modo de esfuerzo para esta sesion. El comando orienta el trabajo y
+queda registrado en las metricas; no cambia el proveedor ni reconfigura una
+sesion ya iniciada.
 
 Input: `/effort <mode>`
 
 Modes:
 
-- **low**: contexto minimo, modelo pequeno, sin subagentes, solo lecturas acotadas. Usar para tareas simples, docs, resumenes, cambios triviales.
-- **medium** (default): balance entre contexto y eficiencia. Lecturas dirigidas, subagentes limitados, modelo normal.
-- **max**: contexto completo, subagentes, modelo cloud. Usar para arquitectura, seguridad, migraciones, features complejas.
+- **low**: usar `opencode-profile` y seleccionar `light` antes de iniciar. Modelo pequeno, sin subagentes, lecturas acotadas.
+- **medium** (default): usar el perfil `personal`. Modelo equilibrado, lecturas dirigidas y delegacion limitada.
+- **max**: usar `opencode-work` antes de iniciar. Modelo cloud completo, mas pasos y verificacion para arquitectura, seguridad, migraciones y features complejas.
 
 Reglas:
-- El modo persiste hasta que se cambie explicitamente.
-- Al cambiar de modo, el agente debe ajustar su comportamiento inmediatamente.
+- El modo se fija al inicio de la sesion; para cambiar de perfil, iniciar una nueva sesion.
+- El agente debe ajustar su comportamiento al modo declarado, pero no afirmar que existe un limite duro si el runtime no lo impone.
 - En modo `low`, el agente debe preguntar antes de hacer lecturas amplias.
-- En modo `max`, el agente debe justificar si NO usa subagentes para tareas complejas.
+- En modo `max`, el agente puede usar hasta tres delegaciones y debe justificar si no usa subagentes para tareas complejas.
+- No seleccionar ni probar Kimi K3 como parte de estos modos.

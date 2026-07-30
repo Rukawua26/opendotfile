@@ -23,6 +23,12 @@ for item in "${CONFIG_DIR}"/*; do
   cp -r "${item}" "${BACKUP_REPO}/" 2>/dev/null || true
 done
 
+# Evitar que copias antiguas permanezcan en el directorio auto-cargado despues
+# de mover plugins opcionales a plugins-optional/.
+for plugin in auto-memory.js hooks.js kanban.js memory-v2.js memory.js personalities.js sandbox.js; do
+  rm -f "${BACKUP_REPO}/plugins/${plugin}"
+done
+
 # Clean files in backup that no longer exist in source
 for item in "${BACKUP_REPO}"/*; do
   name=$(basename "${item}")
@@ -41,8 +47,8 @@ if [ -d "${SKILLS_SRC}" ]; then
   cp -r "${SKILLS_SRC}" "${BACKUP_REPO}/skills"
 fi
 
-# Sync AGENTS.md from home root
-AGENTS_SRC="${HOME}/AGENTS.md"
+# Sync the OpenCode-specific AGENTS.md without duplicating the home-level rules.
+AGENTS_SRC="${CONFIG_DIR}/AGENTS.md"
 if [ -f "${AGENTS_SRC}" ]; then
   cp "${AGENTS_SRC}" "${BACKUP_REPO}/AGENTS.md" 2>/dev/null || true
 fi
@@ -77,6 +83,11 @@ fi
 
 # Restaurar portabilidad: __HOME__ en archivos con rutas absolutas
 for file in "${BACKUP_REPO}/opencode.jsonc" "${BACKUP_REPO}/profiles/work/opencode.jsonc" "${BACKUP_REPO}/profiles/personal/opencode.jsonc" "${BACKUP_REPO}/profiles/light/opencode.jsonc" "${BACKUP_REPO}/tools/agent-consult.ts" "${BACKUP_REPO}/commands/spec.md"; do
+  if [ -f "${file}" ]; then
+    sed -i "s|${HOME}|__HOME__|g" "${file}"
+  fi
+done
+for file in "${BACKUP_REPO}/injects/"*.jsonc; do
   if [ -f "${file}" ]; then
     sed -i "s|${HOME}|__HOME__|g" "${file}"
   fi

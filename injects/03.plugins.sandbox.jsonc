@@ -2,6 +2,6 @@
 // Aplicar: opencode-inject apply plugins.sandbox
 {
   "plugin": [
-    "/home/miguel/.config/opencode/plugins/sandbox.js"
+    "__HOME__/.config/opencode/plugins-optional/sandbox.js"
   ]
 }

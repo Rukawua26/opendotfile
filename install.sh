@@ -41,6 +41,13 @@ fi
 
 # Copiar configuracion principal sin depender de rsync.
 mkdir -p "${TARGET_DIR}"
+
+# Retirar copias antiguas que ya no deben auto-cargarse. El backup de la
+# configuracion existente se creo arriba antes de esta limpieza.
+for plugin in auto-memory.js hooks.js kanban.js memory-v2.js memory.js personalities.js sandbox.js; do
+  rm -f "${TARGET_DIR}/plugins/${plugin}"
+done
+
 for item in "${SOURCE_DIR}"/* "${SOURCE_DIR}"/.[!.]* "${SOURCE_DIR}"/..?*; do
   [ -e "${item}" ] || continue
   name=$(basename "${item}")
@@ -60,8 +67,8 @@ rm -rf "${SPEC_DIR}"
 mkdir -p "$(dirname "${SPEC_DIR}")"
 cp -a "${SOURCE_DIR}/spec" "${SPEC_DIR}"
 
-# Copiar AGENTS.md a ~/AGENTS.md
-cp "${SOURCE_DIR}/AGENTS.md" "${HOME}/AGENTS.md"
+# No crear ni sobrescribir reglas globales. El archivo del backup se instala
+# dentro de ~/.config/opencode junto con el resto de la configuracion.
 
 # Reemplazar __HOME__ por el home real del usuario
 for file in \
@@ -71,6 +78,11 @@ for file in \
   "${TARGET_DIR}/profiles/light/opencode.jsonc" \
   "${TARGET_DIR}/tools/agent-consult.ts" \
   "${TARGET_DIR}/commands/spec.md"; do
+  if [ -f "${file}" ]; then
+    sed -i "s|__HOME__|${HOME}|g" "${file}"
+  fi
+done
+for file in "${TARGET_DIR}/injects/"*.jsonc; do
   if [ -f "${file}" ]; then
     sed -i "s|__HOME__|${HOME}|g" "${file}"
   fi
