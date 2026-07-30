@@ -44,3 +44,28 @@ test("perfiles diferencian modelo, esfuerzo, pasos y plugins opcionales", () => 
   assert.equal(light.agent.build.permission.task, "deny");
   assert.ok(light.plugin.every((plugin) => !plugin.includes("plugins-optional/")));
 });
+
+test("todos los perfiles protegen y cargan Organic RDD", () => {
+  const files = [
+    "opencode.jsonc",
+    "profiles/work/opencode.jsonc",
+    "profiles/personal/opencode.jsonc",
+    "profiles/light/opencode.jsonc",
+  ];
+  const mutations = [
+    "review_mode_set",
+    "review_start",
+    "review_capture",
+    "review_verify",
+    "review_finalize",
+    "review_gate",
+  ];
+
+  for (const file of files) {
+    const config = readJSONC(file);
+    assert.ok(config.plugin.some((plugin) => plugin.endsWith("plugins/organic-rdd.js")), file);
+    assert.equal(config.permission.review_mode_get, "allow", file);
+    assert.equal(config.permission.review_status, "allow", file);
+    for (const tool of mutations) assert.equal(config.permission[tool], "ask", `${file}: ${tool}`);
+  }
+});

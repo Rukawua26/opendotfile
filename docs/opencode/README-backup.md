@@ -177,8 +177,8 @@ cd opencode-config-backup
 **El script:**
 1. Crea backup de la config existente en `~/.config/opencode.backup.<timestamp>`
 2. Copia config a `~/.config/opencode/`
-3. Copia las skills propias a `~/opencode-custom/skills/`; las skills integradas se mantienen en `~/.opencode/skills/`
-4. No sobrescribe las reglas globales existentes en `~/AGENTS.md`
+3. Copia skills a `~/opencode-custom/skills/`
+4. Copia reglas a `~/AGENTS.md`
 5. Reemplaza `__HOME__` por tu home real
 6. Reconecta symlinks de agents
 7. Instala dependencias npm
@@ -201,10 +201,6 @@ cd opencode-config-backup
 | `validator.js` | Validación de API keys en startup |
 | `session-metrics.js` | Métricas de sesiones, tokens y delegaciones |
 | `auto-memory.js` | Captura de decisiones para `memory-adapter` |
-
-El resumen de metricas se persiste silenciosamente en
-`~/.local/share/opencode/plugins-data/metrics-summary.json`. Para imprimirlo
-explicitamente, usar `node ~/.config/opencode/tools/opencode-metrics.js --stdout 7`.
 
 ### Skills
 

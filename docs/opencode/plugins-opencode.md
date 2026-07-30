@@ -9,19 +9,19 @@ ultima-actualizacion: 2026-07-13
 # Plugins OpenCode
 
 ## Resumen
-5 plugins esenciales se cargan automaticamente. Los plugins opcionales se
-mantienen fuera del directorio auto-cargado y solo se activan por perfil.
+8 plugins modulares coordinados vía la API de OpenCode. Cada plugin añade capacidades específicas.
 
 | Plugin | Archivo | Función | Tools/Hooks |
 |--------|---------|---------|-------------|
-| personalities.js | `plugins-optional/personalities.js` | Personalidades bajo demanda | `set_personality` |
+| memory.js | `plugins/memory.js` | Memoria persistente simple (facts JSON) | `memory_add`, `memory_search`, `memory_forget` |
+| memory-v2.js | `plugins/memory-v2.js` | Engramas SQLite + FTS5 de alto valor | `memory_signal`, `memory_search_v2`, `memory_context`, `memory_timeline`, `memory_get`, `memory_update`, `memory_summarize_session` |
+| personalities.js | `plugins/personalities.js` | Personalidades vía SOUL.md | `set_personality` |
 | guardrails.js | `plugins/guardrails.js` | Anti-loop y detección de errores | Hook automático |
 | checkpoints.js | `plugins/checkpoints.js` | Snapshots automáticos antes de edit/write | Hook automático |
-| kanban.js | `plugins-optional/kanban.js` | Tablero de tareas bajo demanda | `kanban_create`, `kanban_list`, `kanban_update`, `kanban_delete` |
-| sandbox.js | `plugins-optional/sandbox.js` | Ejecución aislada en Docker | `sandbox_exec` |
+| kanban.js | `plugins/kanban.js` | Tablero de tareas CRUD | `kanban_create`, `kanban_list`, `kanban_update`, `kanban_delete` |
+| sandbox.js | `plugins/sandbox.js` | Ejecución aislada en Docker | `sandbox_exec` |
 | validator.js | `plugins/validator.js` | Validación de API keys al inicio | Hook startup |
 | organic-rdd.js | `plugins/organic-rdd.js` | Review por riesgo con receipts globales y gate manual | `review_mode_get`, `review_mode_set`, `review_start`, `review_status`, `review_capture`, `review_verify`, `review_finalize`, `review_gate` |
-| auto-memory.js | `plugins-optional/auto-memory.js` | Candidatos de memoria solo en work | `auto_memory_capture`, `auto_memory_summary` |
 
 ## Almacenamiento
 | Datos | Ubicación | Formato |
@@ -31,7 +31,7 @@ mantienen fuera del directorio auto-cargado y solo se activan por perfil.
 | Sesiones | Tabla `sessions` dentro de `memory.db` | SQLite |
 
 ## Integración
-- `opencode.jsonc` → registra los 5 plugins esenciales
+- `opencode.jsonc` → registra los 8 plugins
 - Inyectan en `chat.system.transform` al inicio de sesión
 
 ## Ver también

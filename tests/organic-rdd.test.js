@@ -182,7 +182,7 @@ test("stale candidates cannot finalize or pass a managed gate", () => {
   assert.equal(rdd.gate(receipt.review_id).decision, "fail");
 });
 
-test("rejects files outside the project including escaping symlinks", () => {
+test("rejects files outside the project and all candidate symlinks", () => {
   const { root, project, file, rdd } = fixture();
   file("docs/readme.md");
   const outside = join(root, "outside.txt");
@@ -196,7 +196,20 @@ test("rejects files outside the project including escaping symlinks", () => {
   symlinkSync(outside, join(project, "escape.txt"));
   assert.throws(
     () => rdd.inspectCandidate(project, ["escape.txt"]),
-    (error) => error instanceof OrganicRddError && error.code === "file_outside_project",
+    (error) => error instanceof OrganicRddError && error.code === "file_symlink",
+  );
+});
+
+test("rejects internal symlinks before they can hide risk or be retargeted", () => {
+  const { project, file, rdd } = fixture();
+  file("docs/safe.md", "safe");
+  file("docs/other.md", "other");
+  mkdirSync(join(project, "plugins"), { recursive: true });
+  symlinkSync("../docs/safe.md", join(project, "plugins/runtime.js"));
+
+  assert.throws(
+    () => rdd.start({ project_path: project, feature_id: "runtime", files: ["plugins/runtime.js"] }),
+    (error) => error instanceof OrganicRddError && error.code === "file_symlink",
   );
 });
 
@@ -338,6 +351,36 @@ test("runtime code outside known control directories remains Tier 3", () => {
   assert.equal(classifyPaths(["tools/security-gate.js"]).tier, 3);
   assert.equal(classifyPaths(["scripts/model-router.ts"]).tier, 3);
   assert.equal(classifyPaths(["tests/model-router.test.js"]).tier, 2);
+});
+
+test("classifies nested OpenCode control files conservatively", () => {
+  assert.equal(classifyPaths(["packages/app/AGENTS.md"]).tier, 2);
+  assert.equal(classifyPaths([".opencode/agents/reviewer.md"]).tier, 2);
+  assert.equal(classifyPaths([".opencode/agent/reviewer.md"]).tier, 2);
+  assert.equal(classifyPaths([".opencode/commands/deploy.md"]).tier, 1);
+  assert.equal(classifyPaths([".opencode/command/deploy.md"]).tier, 1);
+  assert.equal(classifyPaths([".opencode/skills/release/SKILL.md"]).tier, 1);
+  assert.equal(classifyPaths([".opencode/prompts/release.md"]).tier, 1);
+});
+
+test("classifies common executable source as Tier 3 except tests", () => {
+  const runtimeFiles = [
+    "src/view.jsx",
+    "src/view.tsx",
+    "src/server.py",
+    "cmd/main.go",
+    "src/main.rs",
+    "src/Main.java",
+    "src/Main.kt",
+    "src/task.rb",
+    "src/index.php",
+    "src/main.c",
+    "src/main.cpp",
+    "scripts/deploy.sh",
+  ];
+  for (const path of runtimeFiles) assert.equal(classifyPaths([path]).tier, 3, path);
+  assert.equal(classifyPaths(["tests/view.test.tsx"]).tier, 2);
+  assert.equal(classifyPaths(["test/server_test.py"]).tier, 2);
 });
 
 test("Git metadata marks a complete explicit manifest", () => {
