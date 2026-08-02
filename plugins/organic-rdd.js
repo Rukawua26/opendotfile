@@ -45,12 +45,16 @@ export const organicRddPlugin = async () => {
         args: {
           feature_id: tool.schema.string().describe("Project-local feature or change identifier"),
           files: tool.schema.array(tool.schema.string()).describe("Project-relative or absolute candidate file paths"),
+          parent_review_id: tool.schema.string().optional().describe("Optional parent receipt ID for lineage"),
+          attempt: tool.schema.number().optional().describe("Optional attempt number; defaults to parent.attempt + 1"),
         },
         async execute(args, ctx) {
           return response(() => rdd.start({
             feature_id: args.feature_id,
             project_path: ctx.directory,
             files: args.files,
+            parent_review_id: args.parent_review_id,
+            attempt: args.attempt,
           }));
         },
       }),
@@ -73,6 +77,17 @@ export const organicRddPlugin = async () => {
           status: tool.schema.enum(["pass", "fail", "blocked"]),
           summary: tool.schema.string().optional().default("").describe("Concise findings summary"),
           evidence: tool.schema.array(tool.schema.string()).optional().default([]).describe("Commands, files, or finding references"),
+          findings: tool.schema.array(tool.schema.object({
+            finding_id: tool.schema.string().optional().describe("Stable identifier"),
+            kind: tool.schema.enum(["blocker", "advisory"]).describe("blocker or advisory"),
+            status: tool.schema.enum(["open", "resolved", "accepted-risk"]).optional().default("open").describe("Finding status"),
+            path: tool.schema.string().optional().default("").describe("Candidate-relative path"),
+            line_start: tool.schema.number().optional().describe("Starting line"),
+            line_end: tool.schema.number().optional().describe("Ending line"),
+            summary: tool.schema.string().describe("Short description or rationale"),
+          })).optional().describe("Structured findings with stable fingerprints"),
+          reviewer_id: tool.schema.string().optional().describe("Identifier of the reviewer agent or human"),
+          execution_id: tool.schema.string().optional().describe("Identifier of the execution run"),
         },
         async execute(args, ctx) {
           return response(() => rdd.capture({ ...args, project_path: ctx.directory }));
