@@ -1026,7 +1026,7 @@ test("candidate file outside resolved project is rejected", () => {
   mkdirSync(sibling, { recursive: true });
   writeFileSync(join(sibling, "secret.ts"), "secret");
   assert.throws(
-    () => rdd.start({ project_path: sibling, feature_id: "bad", files: ["../../../opencode-config-backup/lib/organic-rdd.js"] }),
+    () => rdd.start({ project_path: sibling, feature_id: "bad", files: ["../../../opendotfile/lib/organic-rdd.js"] }),
     (error) => error instanceof OrganicRddError && error.code === "project_mismatch",
   );
 });

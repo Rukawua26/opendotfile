@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BACKUP_REPO="${HOME}/opencode-config-backup"
+BACKUP_REPO="${HOME}/opendotfile"
 CONFIG_DIR="${HOME}/.config/opencode"
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 

@@ -1,6 +1,6 @@
 <div align="center">
 
-# <img src="https://raw.githubusercontent.com/Rukawua26/opencode-config-backup/main/assets/opencode-icon.svg" width="32" height="32"/> OpenCode Config Backup
+# <img src="https://raw.githubusercontent.com/Rukawua26/opendotfile/main/assets/opencode-icon.svg" width="32" height="32"/> OpenDotfile
 
 ### <sub>Estación de trabajo de IA portable, completa y optimizada para ahorro de tokens.</sub>
 
@@ -46,8 +46,8 @@ flowchart TB
 
 ```bash
 # 1️⃣ Clonar el repositorio
-git clone https://github.com/Rukawua26/opencode-config-backup.git
-cd opencode-config-backup
+git clone https://github.com/Rukawua26/opendotfile.git
+cd opendotfile
 
 # 2️⃣ Ejecutar el instalador
 ./install.sh
@@ -188,7 +188,7 @@ flowchart TB
 ## 📂 Estructura
 
 ```
-opencode-config-backup/
+opendotfile/
 ├── agents/                  # 16 agentes activos (symlinks)
 ├── agents-library/          # 233 agentes disponibles
 ├── skills/                  # 21 skills SDD + utilidades

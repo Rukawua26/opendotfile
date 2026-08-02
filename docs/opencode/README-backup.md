@@ -169,8 +169,8 @@ opencode-personal  # perfil económico
 ## Instalación
 
 ```bash
-git clone https://github.com/Rukawua26/opencode-config-backup.git
-cd opencode-config-backup
+git clone https://github.com/Rukawua26/opendotfile.git
+cd opendotfile
 ./install.sh
 ```
 
@@ -233,7 +233,7 @@ cd opencode-config-backup
 ## Estructura del repositorio
 
 ```
-opencode-config-backup/
+opendotfile/
 ├── agents/                    # 16 agentes activos (symlinks)
 ├── agents-library/            # 233 agentes disponibles
 ├── skills/                    # 20 skills SDD + utilidades
