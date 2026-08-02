@@ -1,14 +1,37 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 const HOME = process.env.HOME || "/tmp";
-const file = join(HOME, ".local/share/opencode/plugins-data/session-metrics.jsonl");
-const days = Math.max(1, Number(process.argv[2] || 30));
+const file = process.env.OPENCODE_METRICS_FILE
+  || join(HOME, ".local/share/opencode/plugins-data/session-metrics.jsonl");
+const stdoutMode = process.argv.includes("--stdout");
+const numericArg = process.argv.slice(2).find((arg) => !arg.startsWith("--") && !Number.isNaN(Number(arg)));
+const days = Math.max(1, Number(numericArg || 30));
 const cutoff = Date.now() - days * 86400000;
+const summaryFile = process.env.OPENCODE_METRICS_SUMMARY_FILE
+  || join(HOME, ".local/share/opencode/plugins-data", `metrics-summary-${days}d.json`);
 
 if (!existsSync(file)) {
-  console.log("No session metrics recorded yet.");
+  if (stdoutMode) {
+    console.log(JSON.stringify({
+      days,
+      messages: 0,
+      sessions: 0,
+      cost: 0,
+      input_tokens: 0,
+      output_tokens: 0,
+      reasoning_tokens: 0,
+      cache_read_tokens: 0,
+      tools: 0,
+      delegations: 0,
+      compactions: 0,
+      failures: 0,
+      models: {},
+    }, null, 2));
+  } else {
+    console.log("No session metrics recorded yet.");
+  }
   process.exit(0);
 }
 
@@ -52,4 +75,15 @@ for (const item of records) {
   summary.models[key].output_tokens += item.tokens?.output || 0;
 }
 
-console.log(JSON.stringify(summary, null, 2));
+const payload = JSON.stringify(summary, null, 2);
+
+if (stdoutMode) {
+  console.log(payload);
+} else {
+  try {
+    mkdirSync(dirname(summaryFile), { recursive: true });
+    writeFileSync(summaryFile, `${payload}\n`);
+  } catch {
+    // Summary persistence must never interrupt the session.
+  }
+}
