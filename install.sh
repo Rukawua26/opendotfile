@@ -8,6 +8,19 @@ CUSTOM_DIR="${HOME}/opencode-custom"
 SKILLS_DIR="${CUSTOM_DIR}/skills"
 SPEC_DIR="${CUSTOM_DIR}/spec"
 
+INSTALL_GIT_GATE=0
+for arg in "$@"; do
+  case "${arg}" in
+    --with-git-gate) INSTALL_GIT_GATE=1 ;;
+    -h|--help)
+      echo "Uso: ./install.sh [--with-git-gate]"
+      echo "  --with-git-gate  Instala el hook pre-commit de Organic RDD en .git/hooks/pre-commit"
+      exit 0
+      ;;
+    *) echo "Opcion desconocida: ${arg}" >&2; exit 1 ;;
+  esac
+done
+
 if [ ! -d "${SOURCE_DIR}/.git" ]; then
   echo "ERROR: Ejecuta desde la raiz del repositorio clonado."
   exit 1
@@ -52,7 +65,7 @@ for item in "${SOURCE_DIR}"/* "${SOURCE_DIR}"/.[!.]* "${SOURCE_DIR}"/..?*; do
   [ -e "${item}" ] || continue
   name=$(basename "${item}")
   case "${name}" in
-    .git|node_modules|.env|README.md|install.sh|skills|spec) continue ;;
+    .git|node_modules|.env|README.md|install.sh|skills|spec|hooks) continue ;;
   esac
   cp -a "${item}" "${TARGET_DIR}/"
 done
@@ -124,4 +137,27 @@ echo "  Skills: ${SKILLS_DIR}"
 echo "  Specs: ${SPEC_DIR}"
 echo "  Rules: ${HOME}/AGENTS.md"
 echo ""
+
+# Copiar hooks de referencia a la config activa.
+if [ -d "${SOURCE_DIR}/hooks" ]; then
+  mkdir -p "${TARGET_DIR}/hooks"
+  cp -a "${SOURCE_DIR}/hooks/." "${TARGET_DIR}/hooks/"
+fi
+
+# Instalar el hook pre-commit de Organic RDD en el repo actual (opcional).
+if [ "${INSTALL_GIT_GATE}" = "1" ]; then
+  GIT_HOOKS_DIR="$(git rev-parse --git-path hooks 2>/dev/null || true)"
+  if [ -n "${GIT_HOOKS_DIR}" ] && [ -f "${SOURCE_DIR}/hooks/pre-commit" ]; then
+    if [ -e "${GIT_HOOKS_DIR}/pre-commit" ]; then
+      echo "Backup del hook pre-commit existente: ${GIT_HOOKS_DIR}/pre-commit.organic-rdd.bak"
+      cp -a "${GIT_HOOKS_DIR}/pre-commit" "${GIT_HOOKS_DIR}/pre-commit.organic-rdd.bak"
+    fi
+    cp -a "${SOURCE_DIR}/hooks/pre-commit" "${GIT_HOOKS_DIR}/pre-commit"
+    chmod +x "${GIT_HOOKS_DIR}/pre-commit"
+    echo "Git gate hook instalado en: ${GIT_HOOKS_DIR}/pre-commit"
+  else
+    echo "WARN: no se pudo resolver .git/hooks o falta hooks/pre-commit; no se instalo el gate."
+  fi
+fi
+
 echo "Reinicia OpenCode para que cargue la nueva configuracion."
