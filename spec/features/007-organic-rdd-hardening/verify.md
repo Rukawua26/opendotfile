@@ -21,4 +21,4 @@ PASS
 - AC-4: common runtime extensions (JSX, TSX, Python, Go, Rust, Java, Kotlin, Ruby, PHP, C/C++, shell) are Tier 3 outside tests - PASS via `classifies common executable source as Tier 3 except tests`.
 - AC-5: test source files remain Tier 2 - PASS via same test (`tests/view.test.tsx` and `test/server_test.py` at Tier 2).
 - AC-6: main, work, personal, and light configs load `organic-rdd.js`; reads `allow`, mutations/gate `ask` - PASS via `todos los perfiles protegen y cargan Organic RDD`.
-- AC-7: existing Organic RDD and repository tests continue to pass - PASS via 37/37 focused tests and 85/85 full suite.
+- AC-7: existing Organic RDD and repository tests continue to pass - PASS via 37/37 focused tests and 100/100 full suite (after Feature 008 additions).
