@@ -30,7 +30,7 @@ if (!existsSync(file)) {
       models: {},
     }, null, 2));
   } else {
-    console.log("No session metrics recorded yet.");
+    console.log("No session metrics recorded.");
   }
   process.exit(0);
 }
