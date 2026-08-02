@@ -33,7 +33,7 @@ done
 for item in "${BACKUP_REPO}"/*; do
   name=$(basename "${item}")
   case "${name}" in
-    .git|.gitignore|README.md|install.sh|package-lock.json|package.json|memory.db|kanban.json|.env.example|docs) continue ;;
+    .git|.gitignore|README.md|install.sh|package-lock.json|package.json|memory.db|kanban.json|.env.example|docs|assets) continue ;;
   esac
   if [ ! -e "${CONFIG_DIR}/${name}" ]; then
     rm -rf "${item}"
