@@ -66,6 +66,7 @@ test("todos los perfiles protegen y cargan Organic RDD", () => {
     assert.ok(config.plugin.some((plugin) => plugin.endsWith("plugins/organic-rdd.js")), file);
     assert.equal(config.permission.review_mode_get, "allow", file);
     assert.equal(config.permission.review_status, "allow", file);
+    assert.equal(config.permission.review_validate, "allow", file);
     for (const tool of mutations) assert.equal(config.permission[tool], "ask", `${file}: ${tool}`);
   }
 });

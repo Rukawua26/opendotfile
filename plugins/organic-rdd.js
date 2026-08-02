@@ -116,6 +116,16 @@ export const organicRddPlugin = async () => {
         },
       }),
 
+      review_validate: tool({
+        description: "Diagnose a receipt read-only. Returns receipt integrity, candidate freshness, lineage, policy compatibility, project binding, and git projection without mutating state.",
+        args: {
+          review_id: tool.schema.string().describe("Canonical review receipt ID"),
+        },
+        async execute(args, ctx) {
+          return response(() => rdd.validate(args.review_id, ctx.directory));
+        },
+      }),
+
       review_gate: tool({
         description: "Validate an existing receipt without launching reviewers or verification.",
         args: {

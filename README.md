@@ -21,13 +21,13 @@
   <img src="https://img.shields.io/badge/🧠_Agentes-16_activos-8b5cf6?style=for-the-badge&labelColor=0f172a&color=8b5cf6" alt="Agents"/>
 </a>
 <a href="https://github.com/Rukawua26/opencode-config-backup#componentes">
-  <img src="https://img.shields.io/badge/⚡_Skills-20_SDD-f59e0b?style=for-the-badge&labelColor=0f172a&color=f59e0b" alt="Skills"/>
+  <img src="https://img.shields.io/badge/⚡_Skills-21-f59e0b?style=for-the-badge&labelColor=0f172a&color=f59e0b" alt="Skills"/>
 </a>
 <a href="https://github.com/Rukawua26/opencode-config-backup#perfiles">
   <img src="https://img.shields.io/badge/🎯_Perfiles-3_perfiles-ec4899?style=for-the-badge&labelColor=0f172a&color=ec4899" alt="Profiles"/>
 </a>
 <a href="https://github.com/Rukawua26/opencode-config-backup#componentes">
-  <img src="https://img.shields.io/badge/🔌_Plugins-8_activos-06b6d4?style=for-the-badge&labelColor=0f172a&color=06b6d4" alt="Plugins"/>
+  <img src="https://img.shields.io/badge/🔌_Plugins-9_máximo-06b6d4?style=for-the-badge&labelColor=0f172a&color=06b6d4" alt="Plugins"/>
 </a>
 <a href="https://github.com/Rukawua26/opencode-config-backup#componentes">
   <img src="https://img.shields.io/badge/📡_MCP-5_servidores-f97316?style=for-the-badge&labelColor=0f172a&color=f97316" alt="MCP"/>
@@ -58,13 +58,13 @@
     </td>
     <td align="center" width="20%">
       <img src="https://raw.githubusercontent.com/Rukawua26/opencode-config-backup/main/assets/icon-skills.svg" width="48" height="48"/><br/>
-      <strong><sub>20 Skills</sub></strong><br/>
+      <strong><sub>21 Skills</sub></strong><br/>
       <sub>Ciclo SDD completo</sub>
     </td>
     <td align="center" width="20%">
       <img src="https://raw.githubusercontent.com/Rukawua26/opencode-config-backup/main/assets/icon-plugins.svg" width="48" height="48"/><br/>
-      <strong><sub>8 Plugins</sub></strong><br/>
-      <sub>Guardrails + Kanban + Sandbox</sub>
+      <strong><sub>9 Plugins</sub></strong><br/>
+      <sub>5 esenciales + 4 opcionales</sub>
     </td>
     <td align="center" width="20%">
       <img src="https://raw.githubusercontent.com/Rukawua26/opencode-config-backup/main/assets/icon-mcp.svg" width="48" height="48"/><br/>
@@ -202,10 +202,38 @@ Organic RDD revisa el candidato despues de implementarlo y adapta la ceremonia a
 
 Los receipts canonicos viven en `~/.local/share/opencode/plugins-data/organic-rdd/`. El gate es manual en el MVP. `review mode=disabled` produce `unmanaged`, nunca `approved`.
 
+#### Identidad de proyecto
+
+Cada receipt nuevo registra la identidad efectiva del proyecto para evitar receipts creados contra un directorio padre erroneo (por ejemplo `/home/miguel` en lugar de `/home/miguel/opencode-config-backup`):
+
+- **`workspace_path`**: el `ctx.directory` original tal como se lanzo OpenCode.
+- **`project_path`**: la raiz efectiva resuelta, en este orden: top-level de Git, ancestro con marcador `.sdd-project`, o el propio workspace.
+- **`project_id`**: `sha256(project_path)`, determinista y estable entre subdirectorios.
+- **`git_root`**: la raiz Git (debe coincidir con `project_path` cuando el proyecto es un repo).
+- Los candidatos que resuelvan fuera de `project_path` se rechazan con `project_mismatch`; un workspace amplio no puede absorber un proyecto Git/SDD anidado.
+- Los receipts legacy (sin `project_id`) siguen siendo validos y se reportan como `project_binding: legacy`, sin reescritura.
+
+#### Validacion read-only (`review_validate`)
+
+`review_validate` diagnostica un receipt **sin mutar nada** (no escribe, no crea directorios, no toma locks, no refresca el indice Git):
+
+```text
+receipt_integrity: pass | fail | not_found
+candidate_freshness: pass | blocked | stale
+lineage_integrity: pass | blocked | parent_unverified
+policy_compatibility: pass | outdated | unknown
+project_binding: pass | blocked | legacy
+git_projection: complete | incomplete | unavailable
+required_action: none | start_new_review | start_successor | resolve_lineage
+recommendation: human-readable
+```
+
+Por ser estrictamente read-only, su permiso es `allow` en todos los perfiles (los demas tools de review siguen en `ask`). Se invoca como tool `review_validate` o comando `/review-validate`.
+
 Limitaciones MVP:
 
 - El projection principal es `explicit-files`: el receipt certifica los archivos listados, no todo el workspace.
-- En repos Git, `review_start` guarda `git.head`, archivos cambiados y advertencias cuando hay cambios fuera del manifest.
+- En repos Git, `review_start` guarda un snapshot coherente (`git.head`, archivos cambiados/untracked/deleted) y `manifest_warnings`; borrar o desincronizar ese snapshot en un receipt nuevo falla la integridad.
 - `review_gate` mantiene compatibilidad por defecto; usa `strict_manifest=true` para fallar si Git detecta archivos omitidos.
 - Las eliminaciones Git se reportan como `manifest_has_deletions`; `explicit-files` no puede hashear archivos eliminados, asi que strict mode las bloquea hasta una futura proyeccion Git.
 - No se instalan hooks automaticamente y el store local confia en el mismo usuario del sistema.
@@ -283,9 +311,9 @@ flowchart TB
   </tr>
   <tr>
     <td><strong>🔌 Plugins</strong></td>
-    <td><img src="https://img.shields.io/badge/7-green?style=flat-square" alt="7"/></td>
-    <td><img src="https://img.shields.io/badge/5-blue?style=flat-square" alt="5"/></td>
-    <td><img src="https://img.shields.io/badge/4-yellow?style=flat-square" alt="4"/></td>
+    <td><img src="https://img.shields.io/badge/9-green?style=flat-square" alt="9"/></td>
+    <td><img src="https://img.shields.io/badge/6-blue?style=flat-square" alt="6"/></td>
+    <td><img src="https://img.shields.io/badge/5-yellow?style=flat-square" alt="5"/></td>
   </tr>
   <tr>
     <td><strong>📦 Compactación</strong></td>
@@ -301,7 +329,7 @@ flowchart TB
   </tr>
   <tr>
     <td><strong>📡 MCP</strong></td>
-    <td><img src="https://img.shields.io/badge/5_servidores-22c55e?style=flat-square" alt="5"/></td>
+    <td><img src="https://img.shields.io/badge/4_servidores-22c55e?style=flat-square" alt="4"/></td>
     <td><img src="https://img.shields.io/badge/sin_MCP-94a3b8?style=flat-square" alt="0"/></td>
     <td><img src="https://img.shields.io/badge/sin_MCP-94a3b8?style=flat-square" alt="0"/></td>
   </tr>
@@ -366,34 +394,51 @@ nano ~/.config/opencode/.env
 
 ### 🔌 Plugins
 
+**Esenciales** (`plugins/`, se cargan siempre):
+
+<div align="center">
+<table>
+  <tr>
+    <td><img src="https://img.shields.io/badge/guardrails.js-ef4444?style=for-the-badge&labelColor=0f172a" alt="guardrails"/></td>
+    <td><sub>Anti-loop y detección de errores</sub></td>
+    <td><img src="https://img.shields.io/badge/checkpoints.js-22c55e?style=for-the-badge&labelColor=0f172a" alt="checkpoints"/></td>
+    <td><sub>Snapshots antes de edits</sub></td>
+  </tr>
+  <tr>
+    <td><img src="https://img.shields.io/badge/validator.js-06b6d4?style=for-the-badge&labelColor=0f172a" alt="validator"/></td>
+    <td><sub>Validación de API keys en startup</sub></td>
+    <td><img src="https://img.shields.io/badge/session--metrics.js-ec4899?style=for-the-badge&labelColor=0f172a" alt="metrics"/></td>
+    <td><sub>Métricas de sesiones y tokens</sub></td>
+  </tr>
+  <tr>
+    <td><img src="https://img.shields.io/badge/organic--rdd.js-f59e0b?style=for-the-badge&labelColor=0f172a" alt="organic-rdd"/></td>
+    <td><sub>Review por riesgo con receipts, gates y validación read-only</sub></td>
+    <td></td>
+    <td></td>
+  </tr>
+</table>
+</div>
+
+**Opcionales** (`plugins-optional/`, habilitados por perfil):
+
 <div align="center">
 <table>
   <tr>
     <td><img src="https://img.shields.io/badge/personalities.js-8b5cf6?style=for-the-badge&labelColor=0f172a" alt="personalities"/></td>
     <td><sub>Personalidades vía SOUL.md</sub></td>
-    <td><img src="https://img.shields.io/badge/guardrails.js-ef4444?style=for-the-badge&labelColor=0f172a" alt="guardrails"/></td>
-    <td><sub>Anti-loop y detección de errores</sub></td>
-  </tr>
-  <tr>
-    <td><img src="https://img.shields.io/badge/checkpoints.js-22c55e?style=for-the-badge&labelColor=0f172a" alt="checkpoints"/></td>
-    <td><sub>Snapshots antes de edits</sub></td>
     <td><img src="https://img.shields.io/badge/kanban.js-3b82f6?style=for-the-badge&labelColor=0f172a" alt="kanban"/></td>
     <td><sub>Tablero de tareas integrado</sub></td>
   </tr>
   <tr>
     <td><img src="https://img.shields.io/badge/sandbox.js-f97316?style=for-the-badge&labelColor=0f172a" alt="sandbox"/></td>
     <td><sub>Ejecución aislada en Docker</sub></td>
-    <td><img src="https://img.shields.io/badge/validator.js-06b6d4?style=for-the-badge&labelColor=0f172a" alt="validator"/></td>
-    <td><sub>Validación de API keys en startup</sub></td>
-  </tr>
-  <tr>
-    <td><img src="https://img.shields.io/badge/session--metrics.js-ec4899?style=for-the-badge&labelColor=0f172a" alt="metrics"/></td>
-    <td><sub>Métricas de sesiones y tokens</sub></td>
-    <td><img src="https://img.shields.io/badge/organic--rdd.js-f59e0b?style=for-the-badge&labelColor=0f172a" alt="organic-rdd"/></td>
-    <td><sub>Review por riesgo con receipts y gates</sub></td>
+    <td><img src="https://img.shields.io/badge/auto--memory.js-14b8a6?style=for-the-badge&labelColor=0f172a" alt="auto-memory"/></td>
+    <td><sub>Memoria persistente automática (work)</sub></td>
   </tr>
 </table>
 </div>
+
+**Deshabilitados** (`plugins-disabled/`): `hooks.js`, `memory-v2.js` (este último no compatible con el runtime Bun de OpenCode 1.18.4).
 
 ### ⚡ Skills
 
@@ -426,6 +471,7 @@ nano ~/.config/opencode/.env
   <tr>
     <td><img src="https://img.shields.io/badge/loop--engineering-2dd4bf?style=flat-square" alt="loop"/></td>
     <td><img src="https://img.shields.io/badge/accessibility--audit-34d399?style=flat-square" alt="a11y"/></td>
+    <td><img src="https://img.shields.io/badge/token--efficient--control-84cc16?style=flat-square" alt="tokens"/></td>
   </tr>
 </table>
 </div>
@@ -498,24 +544,34 @@ nano ~/.config/opencode/.env
 ```
 opencode-config-backup/
 ├── 🤖 agents/                    # 16 agentes activos (symlinks)
-├── 📚 agents-library/            # 233 agentes disponibles
-├── ⚡ skills/                    # 20 skills SDD + utilidades
-├── 🔌 plugins/                   # 8 plugins activos
-│   ├── personalities.js          # 🎭 Personalidades
+├── 📚 agents-library/            # 233 agentes disponibles (18 categorías)
+├── ⚡ skills/                    # 21 skills SDD + utilidades
+├── 🔌 plugins/                   # 5 plugins esenciales (siempre activos)
 │   ├── guardrails.js             # 🛡️ Anti-loop
 │   ├── checkpoints.js            # 💾 Snapshots
-│   ├── kanban.js                 # 📋 Tablero
-│   ├── sandbox.js                # 🐳 Docker
 │   ├── validator.js              # 🔑 API keys
 │   ├── session-metrics.js        # 📊 Métricas
-│   └── organic-rdd.js            # Review por riesgo
+│   └── organic-rdd.js            # Review por riesgo + validación read-only
+├── 🔌 plugins-optional/          # 4 opcionales habilitados por perfil
+│   ├── personalities.js          # 🎭 Personalidades
+│   ├── kanban.js                 # 📋 Tablero
+│   ├── sandbox.js                # 🐳 Docker
+│   └── auto-memory.js            # 💾 Memoria automática (work)
+├── ⛔ plugins-disabled/          # hooks.js, memory-v2.js (no compatible con Bun)
 ├── 📡 mcp/                       # 5 servidores MCP
-│   ├── local-model-router.js     # 🔀 Router Ollama
-│   └── memory-adapter/           # 💾 Memoria persistente
+│   ├── local-model-router.js     # 🔀 Router Ollama (activado por defecto)
+│   ├── memory-adapter/           # 💾 Memoria persistente (work)
+│   ├── context7.js               # 📚 Docs de librerías
+│   ├── diagram-generator.js      # 📐 Draw.io / Mermaid
+│   └── playwright.js             # 🌐 Navegador (off por defecto)
+├── 📚 lib/                       # hooks.js, organic-rdd.js, session-metrics.js
+├── 🧪 tests/                     # 9 suites: RDD, hooks, metrics, plugins, perfiles
 ├── 🎯 profiles/
-│   ├── work/opencode.jsonc       # 💼 Perfil completo
-│   ├── personal/opencode.jsonc   # ⚡ Perfil económico
-│   └── light/opencode.jsonc      # 🚀 Perfil ultrarrápido
+│   ├── work/opencode.jsonc       # 💼 Perfil completo (9 plugins + 4 MCP)
+│   ├── personal/opencode.jsonc   # ⚡ Perfil económico (6 plugins)
+│   └── light/opencode.jsonc      # 🚀 Perfil ultrarrápido (5 plugins)
+├── 📋 spec/features/             # 9 features SDD (001-009)
+├── 🎬 commands/                  # Comandos SDD y de revisión (/spec, /review-validate, ...)
 ├── 📋 AGENTS.md                  # Reglas globales del agente
 ├── 🚀 install.sh                 # Instalador portátil
 └── ⚙️ opencode.jsonc             # Config central

@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+const normalizePath = (p) => resolve(p);
 import test from "node:test";
 import {
   OrganicRddError,
   classifyPaths,
   createOrganicRdd,
+  projectId,
 } from "../lib/organic-rdd.js";
 
 function fixture() {
@@ -190,7 +192,7 @@ test("rejects files outside the project and all candidate symlinks", () => {
 
   assert.throws(
     () => rdd.inspectCandidate(project, [outside]),
-    (error) => error instanceof OrganicRddError && error.code === "file_outside_project",
+    (error) => error instanceof OrganicRddError && error.code === "project_mismatch",
   );
 
   symlinkSync(outside, join(project, "escape.txt"));
@@ -466,7 +468,10 @@ test("nested workspace manifests compare workspace-relative paths", () => {
   writeFileSync(join(project, "a.md"), "changed");
 
   const receipt = rdd.start({ project_path: project, feature_id: "nested", files: ["a.md"] });
-  assert.deepEqual(receipt.git.changed_files, ["a.md"]);
+  assert.equal(receipt.project_path, repo);
+  assert.equal(receipt.workspace_path, project);
+  assert.deepEqual(receipt.candidate_files.map((f) => f.path), ["sub/a.md"]);
+  assert.deepEqual(receipt.git.changed_files, ["sub/a.md"]);
   assert.deepEqual(receipt.manifest_warnings, []);
 });
 
@@ -484,8 +489,10 @@ test("nested workspace strict manifest detects outside-workspace path collisions
   writeFileSync(join(project, "a.md"), "sub changed");
 
   const receipt = rdd.start({ project_path: project, feature_id: "nested", files: ["a.md"] });
-  assert.deepEqual(receipt.git.changed_files, ["../a.md", "a.md"]);
-  assert.deepEqual(receipt.manifest_warnings, [{ code: "manifest_incomplete", files: ["../a.md"] }]);
+  assert.equal(receipt.project_path, repo);
+  assert.deepEqual(receipt.candidate_files.map((f) => f.path), ["sub/a.md"]);
+  assert.deepEqual(receipt.git.changed_files, ["a.md", "sub/a.md"]);
+  assert.deepEqual(receipt.manifest_warnings, [{ code: "manifest_incomplete", files: ["a.md"] }]);
   assert.equal(rdd.gate(receipt.review_id, project, { strict_manifest: true }).decision, "fail");
 });
 
@@ -749,4 +756,354 @@ test("blocking test placeholder for future gate integration", () => {
   const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/readme.md"] });
   assert.equal(receipt.status, "approved");
   assert.equal(rdd.gate(receipt.review_id).decision, "pass");
+});
+
+test("validate returns not found for unknown receipt", () => {
+  const { project, store, rdd } = fixture();
+  const result = rdd.validate("r_999_000", project);
+  assert.equal(result.receipt_integrity, "not_found");
+  assert.equal(result.candidate_freshness, "blocked");
+  assert.equal(result.lineage_integrity, "blocked");
+  assert.equal(result.project_binding, "blocked");
+  assert.equal(result.required_action, "start_new_review");
+  assert.equal(existsSync(store), false);
+});
+
+test("validate returns healthy receipt diagnostics", () => {
+  const { project, file, rdd } = fixture();
+  file("docs/readme.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/readme.md"] });
+  const result = rdd.validate(receipt.review_id);
+  assert.equal(result.receipt_integrity, "pass");
+  assert.equal(result.candidate_freshness, "pass");
+  assert.equal(result.lineage_integrity, "pass");
+  assert.equal(result.project_binding, "pass");
+  assert.equal(result.git_projection, "unavailable");
+});
+
+test("validate reports stale candidate", () => {
+  const { project, file, rdd } = fixture();
+  file("docs/readme.md", "original");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/readme.md"] });
+  writeFileSync(join(project, "docs/readme.md"), "changed");
+  const result = rdd.validate(receipt.review_id);
+  assert.equal(result.candidate_freshness, "stale");
+  assert.equal(result.required_action, "start_successor");
+});
+
+test("validate reports policy compatibility", () => {
+  const { project, file, rdd } = fixture();
+  file("docs/readme.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/readme.md"] });
+  const result = rdd.validate(receipt.review_id);
+  assert.equal(result.policy_compatibility, "pass");
+});
+
+test("validate detects blocked lineage from missing parent", () => {
+  const { project, file, store, rdd } = fixture();
+  initGit(project);
+  file("commands/parent.md");
+  git(["add", "."], project);
+  git(["commit", "-m", "initial"], project);
+  const parent = rdd.start({ project_path: project, feature_id: "parent", files: ["commands/parent.md"] });
+  file("commands/child.md");
+  const child = rdd.start({
+    project_path: project, feature_id: "child", files: ["commands/child.md"],
+    parent_review_id: parent.review_id,
+  });
+  writeFileSync(join(store, "reviews", `${parent.review_id}.json`), "{}");
+  const result = rdd.validate(child.review_id);
+  assert.equal(result.lineage_integrity, "parent_unverified");
+});
+
+test("validate detects lineage mismatch", async () => {
+  const { project, file, store, rdd } = fixture();
+  initGit(project);
+  file("docs/a.md", "a");
+  git(["add", "."], project);
+  git(["commit", "-m", "initial"], project);
+  const parent = rdd.start({ project_path: project, feature_id: "parent", files: ["docs/a.md"] });
+  writeFileSync(join(project, "docs/a.md"), "changed");
+  const child = rdd.start({
+    project_path: project, feature_id: "child", files: ["docs/a.md"],
+    parent_review_id: parent.review_id,
+  });
+  writeFileSync(join(store, "reviews", `${parent.review_id}.json`), "{}");
+  const result = rdd.validate(child.review_id);
+  assert.equal(result.lineage_integrity, "parent_unverified");
+});
+
+test("validate is imported for read-only", () => {
+  const { project, file, store, rdd } = fixture();
+  file("docs/readme.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/readme.md"] });
+  const receiptPath = join(store, "reviews", `${receipt.review_id}.json`);
+  const before = readFileSync(receiptPath, "utf8");
+  const beforeMtime = statSync(receiptPath).mtimeMs;
+  rdd.validate(receipt.review_id, project);
+  const after = readFileSync(receiptPath, "utf8");
+  assert.equal(before, after);
+  assert.equal(statSync(receiptPath).mtimeMs, beforeMtime);
+});
+
+test("validate project binding passes when workspace matches", () => {
+  const { project, file, rdd } = fixture();
+  file("docs/readme.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/readme.md"] });
+  const result = rdd.validate(receipt.review_id, project);
+  assert.equal(result.project_binding, "pass");
+});
+
+test("validate project binding passes from the nested workspace that created the receipt", () => {
+  const { project, file, rdd } = fixture();
+  initGit(project);
+  const workspace = join(project, "src");
+  mkdirSync(workspace, { recursive: true });
+  file("src/app.ts");
+  const receipt = rdd.start({ project_path: workspace, feature_id: "build", files: ["app.ts"] });
+  const result = rdd.validate(receipt.review_id, workspace);
+  assert.equal(result.project_binding, "pass");
+});
+
+test("validate rejects a tampered project_id", () => {
+  const { project, file, store, rdd } = fixture();
+  file("docs/readme.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/readme.md"] });
+  const receiptPath = join(store, "reviews", `${receipt.review_id}.json`);
+  const raw = JSON.parse(readFileSync(receiptPath, "utf8"));
+  raw.project_id = "0".repeat(64);
+  writeFileSync(receiptPath, JSON.stringify(raw));
+  const result = rdd.validate(receipt.review_id, project);
+  assert.equal(result.receipt_integrity, "fail");
+  assert.equal(result.project_binding, "blocked");
+  assert.equal(result.required_action, "start_new_review");
+});
+
+test("validate reports an incomplete Git projection", () => {
+  const { project, file, rdd } = fixture();
+  initGit(project);
+  file("docs/a.md", "a");
+  file("docs/b.md", "b");
+  git(["add", "."], project);
+  git(["commit", "-m", "initial"], project);
+  file("docs/a.md", "changed a");
+  file("docs/b.md", "changed b");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/a.md"] });
+  const result = rdd.validate(receipt.review_id, project);
+  assert.equal(result.git_projection, "incomplete");
+});
+
+test("validate does not refresh or lock the Git index", () => {
+  const { project, file, rdd } = fixture();
+  initGit(project);
+  file("docs/a.md", "a");
+  git(["add", "."], project);
+  git(["commit", "-m", "initial"], project);
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/a.md"] });
+  const indexPath = join(project, ".git", "index");
+  const before = readFileSync(indexPath);
+  const beforeMtime = statSync(indexPath).mtimeMs;
+  rdd.validate(receipt.review_id, project);
+  assert.deepEqual(readFileSync(indexPath), before);
+  assert.equal(statSync(indexPath).mtimeMs, beforeMtime);
+  assert.equal(existsSync(join(project, ".git", "index.lock")), false);
+});
+
+test("validate rejects incoherent stored Git identity", () => {
+  const { project, file, store, rdd } = fixture();
+  initGit(project);
+  file("docs/a.md", "a");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/a.md"] });
+  const receiptPath = join(store, "reviews", `${receipt.review_id}.json`);
+  const raw = JSON.parse(readFileSync(receiptPath, "utf8"));
+  raw.git_root = null;
+  writeFileSync(receiptPath, JSON.stringify(raw));
+  assert.equal(rdd.validate(receipt.review_id, project).receipt_integrity, "fail");
+});
+
+test("validate rejects a new receipt with missing Git snapshot", () => {
+  const { project, file, store, rdd } = fixture();
+  file("docs/a.md", "a");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/a.md"] });
+  const receiptPath = join(store, "reviews", `${receipt.review_id}.json`);
+  const raw = JSON.parse(readFileSync(receiptPath, "utf8"));
+  delete raw.git;
+  writeFileSync(receiptPath, JSON.stringify(raw));
+  assert.equal(rdd.validate(receipt.review_id, project).receipt_integrity, "fail");
+});
+
+test("validate rejects a new receipt with missing manifest warnings", () => {
+  const { project, file, store, rdd } = fixture();
+  initGit(project);
+  file("docs/a.md", "a");
+  file("docs/b.md", "b");
+  git(["add", "."], project);
+  git(["commit", "-m", "initial"], project);
+  file("docs/a.md", "changed a");
+  file("docs/b.md", "changed b");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/a.md"] });
+  const receiptPath = join(store, "reviews", `${receipt.review_id}.json`);
+  const raw = JSON.parse(readFileSync(receiptPath, "utf8"));
+  delete raw.manifest_warnings;
+  writeFileSync(receiptPath, JSON.stringify(raw));
+  const result = rdd.validate(receipt.review_id, project);
+  assert.equal(result.receipt_integrity, "fail");
+  assert.equal(result.git_projection, "unavailable");
+});
+
+test("validate project binding blocked when workspace differs", () => {
+  const { project, file, rdd } = fixture();
+  file("docs/readme.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/readme.md"] });
+  const other = join(dirname(project), "elsewhere");
+  mkdirSync(other, { recursive: true });
+  const result = rdd.validate(receipt.review_id, other);
+  assert.equal(result.project_binding, "blocked");
+});
+
+test("Git root is resolved via repository top-level", () => {
+  const { project, file, rdd } = fixture();
+  initGit(project);
+  const sub = join(project, "src");
+  mkdirSync(sub, { recursive: true });
+  file("src/app.ts");
+  const receipt = rdd.start({ project_path: sub, feature_id: "build", files: ["../src/app.ts"] });
+  const gitRoot = normalizePath(git(["rev-parse", "--show-toplevel"], sub));
+  assert.equal(receipt.workspace_path, sub);
+  assert.equal(receipt.project_path, gitRoot);
+  assert.equal(receipt.git_root, gitRoot);
+  assert.equal(receipt.git.available, true);
+  assert.equal(receipt.git.root, gitRoot);
+  assert.deepEqual(receipt.candidate_files.map((f) => f.path), ["src/app.ts"]);
+});
+
+test("project_id is deterministic and stable across subdirectories", () => {
+  const { root, rdd } = fixture();
+  const repo = join(root, "repo");
+  mkdirSync(repo, { recursive: true });
+  initGit(repo);
+  const workspace = join(repo, "project", "src");
+  mkdirSync(workspace, { recursive: true });
+  writeFileSync(join(repo, "project", "src", "app.ts"), "app");
+  const receipt = rdd.start({ project_path: workspace, feature_id: "build", files: ["../src/app.ts"] });
+  const gitRoot = normalizePath(git(["rev-parse", "--show-toplevel"], workspace));
+  assert.equal(receipt.project_id, projectId(gitRoot));
+  assert.notEqual(receipt.project_id, projectId(workspace));
+});
+
+test("workspace_path preserves a symlinked ctx.directory", () => {
+  const { root, project, rdd } = fixture();
+  initGit(project);
+  const workspace = join(project, "src");
+  const linkedWorkspace = join(root, "workspace-link");
+  mkdirSync(workspace, { recursive: true });
+  writeFileSync(join(workspace, "app.ts"), "app");
+  symlinkSync(workspace, linkedWorkspace);
+  const receipt = rdd.start({ project_path: linkedWorkspace, feature_id: "build", files: ["app.ts"] });
+  assert.equal(receipt.workspace_path, linkedWorkspace);
+  assert.equal(receipt.project_path, project);
+  assert.deepEqual(receipt.candidate_files.map((file) => file.path), ["src/app.ts"]);
+});
+
+test("receipts without project_id are marked legacy by validate", () => {
+  const { project, file, store, rdd } = fixture();
+  file("docs/readme.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/readme.md"] });
+  const receiptPath = join(store, "reviews", `${receipt.review_id}.json`);
+  const raw = JSON.parse(readFileSync(receiptPath, "utf8"));
+  delete raw.project_id;
+  delete raw.git_root;
+  delete raw.workspace_path;
+  writeFileSync(receiptPath, JSON.stringify(raw));
+  const result = rdd.validate(receipt.review_id);
+  assert.equal(result.project_binding, "legacy");
+});
+
+test("candidate file outside resolved project is rejected", () => {
+  const { project, file, rdd } = fixture();
+  file("docs/a.md");
+  const sibling = join(dirname(project), "sibling");
+  mkdirSync(sibling, { recursive: true });
+  writeFileSync(join(sibling, "secret.ts"), "secret");
+  assert.throws(
+    () => rdd.start({ project_path: sibling, feature_id: "bad", files: ["../../../opencode-config-backup/lib/organic-rdd.js"] }),
+    (error) => error instanceof OrganicRddError && error.code === "project_mismatch",
+  );
+});
+
+test("broad workspace cannot absorb a nested Git project", () => {
+  const { root, rdd } = fixture();
+  const repo = join(root, "nested-repo");
+  mkdirSync(join(repo, "src"), { recursive: true });
+  initGit(repo);
+  writeFileSync(join(repo, "src", "app.ts"), "app");
+
+  assert.throws(
+    () => rdd.start({
+      project_path: root,
+      feature_id: "nested-project",
+      files: ["nested-repo/src/app.ts"],
+    }),
+    (error) => error instanceof OrganicRddError && error.code === "project_mismatch",
+  );
+});
+
+test("a parent Git project cannot absorb a nested Git project", () => {
+  const { project, rdd } = fixture();
+  initGit(project);
+  const nested = join(project, "nested-repo");
+  mkdirSync(join(nested, "src"), { recursive: true });
+  initGit(nested);
+  writeFileSync(join(nested, "src", "app.ts"), "app");
+
+  assert.throws(
+    () => rdd.start({ project_path: project, feature_id: "nested-project", files: ["nested-repo/src/app.ts"] }),
+    (error) => error instanceof OrganicRddError && error.code === "project_mismatch",
+  );
+});
+
+test("legacy nested Git receipts remain fresh and support successor lineage", () => {
+  const { project, file, store, rdd } = fixture();
+  initGit(project);
+  const workspace = join(project, "sub");
+  mkdirSync(workspace, { recursive: true });
+  file("sub/a.md", "a");
+
+  const parent = rdd.start({ project_path: workspace, feature_id: "legacy-parent", files: ["a.md"] });
+  const legacyCandidate = rdd.inspectCandidate(workspace, ["a.md"], { legacy: true });
+  const parentPath = join(store, "reviews", `${parent.review_id}.json`);
+  const raw = JSON.parse(readFileSync(parentPath, "utf8"));
+  raw.project_path = workspace;
+  raw.project_name = "sub";
+  raw.candidate_id = legacyCandidate.candidate_id;
+  raw.candidate_files = legacyCandidate.candidate_files;
+  delete raw.workspace_path;
+  delete raw.project_id;
+  delete raw.git_root;
+  writeFileSync(parentPath, JSON.stringify(raw));
+
+  const diagnostic = rdd.validate(parent.review_id, workspace);
+  assert.equal(diagnostic.project_binding, "legacy");
+  assert.equal(diagnostic.candidate_freshness, "pass");
+  assert.equal(diagnostic.git_projection, "complete");
+  assert.equal(rdd.gate(parent.review_id, workspace).decision, "pass");
+
+  const child = rdd.start({
+    project_path: workspace,
+    feature_id: "successor",
+    files: ["a.md"],
+    parent_review_id: parent.review_id,
+  });
+  assert.equal(child.parent_review_id, parent.review_id);
+  assert.equal(child.project_path, project);
+});
+
+test("invalid Git marker does not become the project identity", () => {
+  const { project, file, rdd } = fixture();
+  mkdirSync(join(project, ".git"));
+  file("docs/readme.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/readme.md"] });
+  assert.equal(receipt.project_path, project);
+  assert.equal(receipt.git_root, null);
+  assert.equal(receipt.git.available, false);
 });

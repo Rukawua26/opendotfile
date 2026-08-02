@@ -23,6 +23,7 @@ test("plugin exposes the negotiated tool surface and structured results", async 
       "review_mode_set",
       "review_start",
       "review_status",
+      "review_validate",
       "review_verify",
     ]);
 
