@@ -541,3 +541,212 @@ test("strict gate fails closed when Git is unavailable at receipt creation", () 
     process.env.PATH = originalPath;
   }
 });
+
+test("receipt records policy_snapshot with classifier version", () => {
+  const { project, file, rdd } = fixture();
+  file("docs/readme.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/readme.md"] });
+  assert.equal(receipt.policy_snapshot.classifier_version, "hardening-007");
+});
+
+test("receipt without policy_snapshot remains readable", () => {
+  const { project, store, file, rdd } = fixture();
+  file("docs/readme.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/readme.md"] });
+  const path = join(store, "reviews", `${receipt.review_id}.json`);
+  const stored = JSON.parse(readFileSync(path, "utf8"));
+  delete stored.policy_snapshot;
+  writeFileSync(path, JSON.stringify(stored));
+  assert.doesNotThrow(() => rdd.status(receipt.review_id));
+});
+
+test("receipt with parent_review_id stores lineage", () => {
+  const { project, file, rdd } = fixture();
+  file("commands/example.md", "original");
+  const parent = rdd.start({ project_path: project, feature_id: "parent", files: ["commands/example.md"] });
+  writeFileSync(join(project, "commands/example.md"), "changed");
+  const child = rdd.start({
+    project_path: project, feature_id: "child", files: ["commands/example.md"],
+    parent_review_id: parent.review_id,
+  });
+  assert.equal(child.parent_review_id, parent.review_id);
+  assert.equal(child.root_review_id, parent.review_id);
+  assert.equal(child.attempt, (parent.attempt || 1) + 1);
+});
+
+test("receipt without parent defaults to attempt 1 and self-referential root", () => {
+  const { project, file, rdd } = fixture();
+  file("docs/a.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/a.md"] });
+  assert.equal(receipt.parent_review_id, null);
+  assert.equal(receipt.root_review_id, receipt.review_id);
+  assert.equal(receipt.attempt, 1);
+});
+
+test("parent_review_id referencing unknown receipt is rejected", () => {
+  const { project, file, rdd } = fixture();
+  file("docs/a.md");
+  assert.throws(
+    () => rdd.start({ project_path: project, feature_id: "docs", files: ["docs/a.md"], parent_review_id: "r_999_000" }),
+    (error) => error instanceof OrganicRddError && error.code === "lineage_invalid",
+  );
+});
+
+test("parent_review_id from a different project is rejected", () => {
+  const { root, project, file, rdd } = fixture();
+  const other = join(root, "other");
+  mkdirSync(join(other, "docs"), { recursive: true });
+  writeFileSync(join(other, "docs/a.md"), "content");
+  file("docs/a.md");
+  const parent = rdd.start({ project_path: project, feature_id: "parent", files: ["docs/a.md"] });
+  assert.throws(
+    () => rdd.start({ project_path: other, feature_id: "child", files: ["docs/a.md"], parent_review_id: parent.review_id }),
+    (error) => error instanceof OrganicRddError && error.code === "lineage_invalid",
+  );
+});
+
+test("attempt overrides parent-derived attempt number", () => {
+  const { project, file, rdd } = fixture();
+  file("commands/a.md");
+  const parent = rdd.start({ project_path: project, feature_id: "parent", files: ["commands/a.md"] });
+  writeFileSync(join(project, "commands/a.md"), "changed");
+  const child = rdd.start({
+    project_path: project, feature_id: "child", files: ["commands/a.md"],
+    parent_review_id: parent.review_id,
+    attempt: 5,
+  });
+  assert.equal(child.attempt, 5);
+});
+
+test("open blocker finding prevents finalization", () => {
+  const { project, file, rdd } = fixture();
+  file("commands/example.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "example", files: ["commands/example.md"] });
+
+  rdd.capture({
+    review_id: receipt.review_id,
+    lens: "code-review",
+    status: "fail",
+    summary: "Found issue",
+    evidence: ["manual review"],
+    findings: [{ kind: "blocker", summary: "Potential security issue", status: "open" }],
+  });
+  assert.equal(rdd.finalize(receipt.review_id).status, "blocked");
+});
+
+test("accepted-risk blocker with rationale allows finalization", () => {
+  const { project, file, rdd } = fixture();
+  file("commands/example.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "example", files: ["commands/example.md"] });
+
+  rdd.capture({
+    review_id: receipt.review_id,
+    lens: "code-review",
+    status: "pass",
+    summary: "Reviewed",
+    evidence: ["manual review"],
+    findings: [{
+      kind: "blocker",
+      summary: "Legacy interface used intentionally for this release",
+      status: "accepted-risk",
+    }],
+  });
+  rdd.verify({ review_id: receipt.review_id, status: "pass", evidence: ["node --test"] });
+  assert.equal(rdd.finalize(receipt.review_id).status, "approved");
+});
+
+test("findings are normalized to include fingerprint", () => {
+  const { project, file, rdd } = fixture();
+  file("commands/example.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "example", files: ["commands/example.md"] });
+
+  const result = rdd.capture({
+    review_id: receipt.review_id,
+    lens: "code-review",
+    status: "fail",
+    summary: "Found issue",
+    evidence: ["manual review"],
+    findings: [{ kind: "blocker", summary: "Issue detail", path: "src/main.ts", line_start: 10, line_end: 20 }],
+  });
+  const finding = result.captured_lenses[0].findings[0];
+  assert.equal(finding.kind, "blocker");
+  assert.equal(finding.status, "open");
+  assert.equal(finding.path, "src/main.ts");
+  assert.match(finding.fingerprint, /^[a-f0-9]{16}$/);
+  assert.equal(finding.finding_id, "f_" + finding.fingerprint);
+});
+
+test("accepted-risk without rationale is rejected", () => {
+  const { project, file, rdd } = fixture();
+  file("commands/example.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "example", files: ["commands/example.md"] });
+  assert.throws(
+    () => rdd.capture({
+      review_id: receipt.review_id,
+      lens: "code-review",
+      status: "fail",
+      summary: "Issue",
+      evidence: ["review"],
+      findings: [{ kind: "blocker", summary: "short", status: "accepted-risk" }],
+    }),
+    (error) => error instanceof OrganicRddError && error.code === "findings_invalid",
+  );
+});
+
+test("invalid finding kind is rejected", () => {
+  const { project, file, rdd } = fixture();
+  file("commands/example.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "example", files: ["commands/example.md"] });
+  assert.throws(
+    () => rdd.capture({
+      review_id: receipt.review_id,
+      lens: "code-review",
+      status: "fail",
+      summary: "Issue",
+      evidence: ["review"],
+      findings: [{ kind: "critical", summary: "Bad kind" }],
+    }),
+    (error) => error instanceof OrganicRddError && error.code === "findings_invalid",
+  );
+});
+
+test("open blocker finding with missing path defaults to empty string", () => {
+  const { project, file, rdd } = fixture();
+  file("commands/example.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "example", files: ["commands/example.md"] });
+  const result = rdd.capture({
+    review_id: receipt.review_id,
+    lens: "code-review",
+    status: "fail",
+    summary: "Issue",
+    evidence: ["review"],
+    findings: [{ kind: "blocker", summary: "Some issue" }],
+  });
+  assert.equal(result.captured_lenses[0].findings[0].path, "");
+});
+
+test("reviewer_id and execution_id are stored as metadata", () => {
+  const { project, file, rdd } = fixture();
+  file("commands/example.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "example", files: ["commands/example.md"] });
+  const result = rdd.capture({
+    review_id: receipt.review_id,
+    lens: "code-review",
+    status: "pass",
+    summary: "Reviewed",
+    evidence: ["manual review"],
+    reviewer_id: "code-reviewer",
+    execution_id: "exec-001",
+  });
+  const lens = result.captured_lenses[0];
+  assert.equal(lens.reviewer_id, "code-reviewer");
+  assert.equal(lens.execution_id, "exec-001");
+});
+
+test("blocking test placeholder for future gate integration", () => {
+  const { project, file, rdd } = fixture();
+  file("docs/readme.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["docs/readme.md"] });
+  assert.equal(receipt.status, "approved");
+  assert.equal(rdd.gate(receipt.review_id).decision, "pass");
+});
