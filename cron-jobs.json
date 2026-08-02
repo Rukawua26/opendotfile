@@ -2,7 +2,7 @@
   "jobs": [
     {
       "name": "Auto-backup config OpenCode",
-      "prompt": "Ejecuta ~/tools/backup-opencode-config.sh para respaldar la configuracion de OpenCode en el repo opencode-config-backup",
+      "prompt": "Ejecuta ~/tools/backup-opencode-config.sh para respaldar la configuracion de OpenCode en el repo opendotfile",
       "interval_minutes": 1440,
       "timeout_seconds": 120
     },
