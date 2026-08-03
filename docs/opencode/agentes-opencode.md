@@ -45,7 +45,7 @@ Divisiones actuales: academic, agency-core, design, engineering, finance, game-d
 En OpenCode: `@nombre-del-agente`
 
 ## Ubicación
-- Backup: `opencode-config-backup/agents/` y `opencode-config-backup/agents-library/`
+- Backup: `opendotfile/agents/` y `opendotfile/agents-library/`
 - Integración: `~/.config/opencode/agents/`
 
 ## Ver también

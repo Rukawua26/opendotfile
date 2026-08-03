@@ -8,11 +8,11 @@ Two tightly coupled changes: (1) resolve the effective project root correctly so
 
 ### Project Identity Is Incorrect
 
-`review_start` currently uses `ctx.directory` directly as `project_path`. When OpenCode is launched from `/home/miguel` but operates on `/home/miguel/opencode-config-backup`, the receipt records:
+`review_start` currently uses `ctx.directory` directly as `project_path`. When OpenCode is launched from `/home/miguel` but operates on `/home/miguel/opendotfile`, the receipt records:
 
 ```text
 project_path: /home/miguel
-candidate files: opencode-config-backup/lib/organic-rdd.js
+candidate files: opendotfile/lib/organic-rdd.js
 git.available: false
 ```
 
@@ -122,7 +122,7 @@ Existing tools (`review_start`, `review_capture`, `review_finalize`, `review_gat
 
 ### AC-1 Root Resolution
 
-A workspace inside `/home/miguel/opencode-config-backup` resolves `project_path` to `/home/miguel/opencode-config-backup`. `project_id` is deterministic.
+A workspace inside `/home/miguel/opendotfile` resolves `project_path` to `/home/miguel/opendotfile`. `project_id` is deterministic.
 
 ### AC-2 Git Availability
 
