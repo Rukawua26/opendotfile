@@ -46,10 +46,10 @@
   },
   {
     "id": "t1781558775058_6",
-    "title": "Sistema: Migrar más APIs a OpenCode",
-    "description": "OpenAI disponible: configura OPENAI_API_KEY en ~/.config/opencode/.env y valida el provider. Anthropic queda opcional y pendiente hasta disponer de ANTHROPIC_API_KEY.",
+    "title": "Sistema: Habilitar provider OpenAI en OpenCode",
+    "description": "OPENAI_API_KEY configurada y verificada con una solicitud real a openai/gpt-5.4-mini. Anthropic no es necesario para el setup actual.",
     "priority": "low",
-    "status": "todo",
+    "status": "done",
     "created": "2026-06-15T21:26:15.058Z",
     "updated": "2026-07-26T03:23:38.524Z"
   },
