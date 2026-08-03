@@ -58,6 +58,8 @@ nano ~/.config/opencode/.env
 
 El script hace automáticamente: backup de la config existente, copia a `~/.config/opencode/`, skills a `~/opencode-custom/skills/`, reemplaza `__HOME__` por tu home real, reconecta symlinks de agents e instala dependencias npm.
 
+Para habilitar el provider principal, configura localmente `OPENAI_API_KEY` en `~/.config/opencode/.env`. Anthropic (`ANTHROPIC_API_KEY`) es opcional.
+
 ---
 
 ## 🎯 Perfiles

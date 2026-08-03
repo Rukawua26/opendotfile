@@ -47,9 +47,9 @@
   {
     "id": "t1781558775058_6",
     "title": "Sistema: Migrar más APIs a OpenCode",
-    "description": "Bloqueada: configurar OPENAI_API_KEY y ANTHROPIC_API_KEY en ~/.config/opencode/.env cuando el usuario proporcione las credenciales; después reiniciar OpenCode y validar los providers.",
+    "description": "OpenAI disponible: configura OPENAI_API_KEY en ~/.config/opencode/.env y valida el provider. Anthropic queda opcional y pendiente hasta disponer de ANTHROPIC_API_KEY.",
     "priority": "low",
-    "status": "blocked",
+    "status": "todo",
     "created": "2026-06-15T21:26:15.058Z",
     "updated": "2026-07-26T03:23:38.524Z"
   },
