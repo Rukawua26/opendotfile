@@ -37,6 +37,23 @@ test("modo normal persiste el resumen sin imprimir JSON", () => {
   assert.equal(JSON.parse(readFileSync(summary, "utf8")).messages, 1);
 });
 
+test("failures es un numero y se cuenta por registros fallidos", () => {
+  const flog = join(root, "failures-metrics.jsonl");
+  const fsummary = join(root, "failures-summary.json");
+  writeFileSync(
+    flog,
+    `${JSON.stringify({ ...record, failed: true })}\n${JSON.stringify({ ...record, message: "msg2", failed: false })}\n`,
+  );
+  const res = spawnSync(process.execPath, [script, "--stdout", "1"], {
+    encoding: "utf8",
+    env: { ...process.env, OPENCODE_METRICS_FILE: flog, OPENCODE_METRICS_SUMMARY_FILE: fsummary },
+  });
+  assert.equal(res.status, 0);
+  const out = JSON.parse(res.stdout);
+  assert.equal(Number.isInteger(out.failures), true);
+  assert.equal(out.failures, 1);
+});
+
 test("--stdout imprime un JSON valido bajo demanda", () => {
   const result = run(["--stdout", "1"]);
   assert.equal(result.status, 0);

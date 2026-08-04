@@ -56,6 +56,7 @@ const summary = {
   tools: 0,
   delegations: 0,
   compactions: 0,
+  failures: 0,
   duplicate_reads: 0,
   loop_messages: 0,
   legacy_records: 0,
