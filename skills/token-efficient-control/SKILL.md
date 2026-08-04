@@ -23,6 +23,8 @@ Elige el modo segun la tarea:
 - No leer directorios completos
 - Si necesitas mas contexto, consulta primero si es necesario
 - Compacta temprano si la sesion crece
+- Anti-relectura: no vuelvas a leer el mismo rango de archivo si no cambio;
+  mas de 5 lecturas repetitivas/anchas → delega a `explore` con tarea acotada.
 
 ## Effort Medium (default)
 
@@ -30,7 +32,7 @@ Elige el modo segun la tarea:
 
 **Reglas**:
 - Modelo normal segun config
-- Lecturas dirigidas a archivos relevantes
+- Lecturas dirigidas a archivos relevantes (1-3 antes de delegar)
 - Subagentes solo si la tarea lo justifica
 - Prefiere `query_context.py` sobre leer arboles completos
 - Carga contexto de otras features solo si hay dependencia explicita
@@ -46,6 +48,14 @@ Elige el modo segun la tarea:
 - Lectura de archivos completa
 - Usa Organic RDD si los cambios son Tier 2+
 - Usa multiagente si cruza backend+frontend+infra
+
+## Umbrales de sesion
+
+- A los 20 tools: revisa el enfoque (advertencia).
+- A los 50 tools: considera compactar o subdividir (advertencia).
+- A los 100 tools: divide la tarea en sesiones mas cortas (advertencia).
+- Profundidad maxima de subagentes anidados: 1.
+- `preserve_recent_tokens` protege el cierre post-compactacion.
 
 ## Output Esperado
 

@@ -1,7 +1,13 @@
+import { readSignature, createReadHistory, noteRead, readWarning, clearReads } from "../lib/tool-efficiency.js";
+
 const WARN_CONSECUTIVE = 5;
 const WARN_TOTAL = 20;
+const WARN_TOTAL_50 = 50;
+const WARN_TOTAL_100 = 100;
 const WARN_FAILURES = 3;
 const MAX_WARNING_HISTORY = 10;
+const READ_TOOLS = new Set(["read"]);
+const RESET_TOOLS = new Set(["edit", "write", "apply_patch", "patch"]);
 
 const sessionState = new Map();
 
@@ -14,10 +20,13 @@ function getState(sessionID) {
       consecutiveWarned: false,
       total: 0,
       totalWarned: false,
+      total50Warned: false,
+      total100Warned: false,
       failures: 0,
       lastFailTool: null,
       emptyWarned: false,
       pendingWarnings: new Map(),
+      readHistory: createReadHistory(),
     });
   }
   return sessionState.get(sid);
@@ -61,11 +70,39 @@ export const guardrailsPlugin = async () => {
         });
       }
 
-      if (input.tool === st.lastTool) {
+      if (st.total === WARN_TOTAL_50 && !st.total50Warned) {
+        st.total50Warned = true;
+        queueWarning(st, input.callID, {
+          trigger: "total_calls_50",
+          warning: `[GUARDRAIL: ${st.total} tools usadas en esta sesión. Considera compactar o subdividir la tarea.]`,
+        });
+      }
+
+      if (st.total === WARN_TOTAL_100 && !st.total100Warned) {
+        st.total100Warned = true;
+        queueWarning(st, input.callID, {
+          trigger: "total_calls_100",
+          warning: `[GUARDRAIL: ${st.total} tools usadas en esta sesión. Divide la tarea en sesiones más cortas.]`,
+        });
+      }
+
+      const toolName = String(input.tool || "").toLowerCase();
+      if (READ_TOOLS.has(toolName)) {
+        const signature = readSignature(input);
+        const count = noteRead(st.readHistory, signature);
+        const warning = readWarning(st.readHistory, signature, count);
+        if (warning) queueWarning(st, input.callID, warning);
+      }
+
+      if (RESET_TOOLS.has(toolName)) {
+        clearReads(st.readHistory);
+      }
+
+      if (toolName === st.lastTool) {
         st.consecutive++;
       } else {
         st.consecutive = 1;
-        st.lastTool = input.tool;
+        st.lastTool = toolName;
         st.consecutiveWarned = false;
       }
 
@@ -86,11 +123,12 @@ export const guardrailsPlugin = async () => {
 
       const outText = output?.output || '';
       if (!outText || outText.trim().length < 5) {
-        if (input.tool === st.lastFailTool) {
+        const toolName = String(input.tool || "").toLowerCase();
+        if (toolName === st.lastFailTool) {
           st.failures++;
         } else {
           st.failures = 1;
-          st.lastFailTool = input.tool;
+          st.lastFailTool = toolName;
         }
 
         if (st.failures >= WARN_FAILURES && !st.emptyWarned) {

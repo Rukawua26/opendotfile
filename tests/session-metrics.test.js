@@ -73,3 +73,23 @@ test("metric existente no se rompe con nuevos campos", () => {
   assert.deepEqual(result.tokens, { input: 100, output: 50, reasoning: 10, cache_read: 20, cache_write: 5 });
   assert.equal(result.failed, false);
 });
+
+test("metric v2 incluye schema_version y campos de eficiencia", () => {
+  const result = metricFromMessage(msg(), {
+    tools: 3,
+    delegations: 1,
+    compactions: 0,
+    duplicate_reads: 2,
+    context_growth: 500,
+  });
+  assert.equal(result.schema_version, 2);
+  assert.equal(result.tools_delta, 3);
+  assert.equal(result.duplicate_reads, 2);
+  assert.equal(result.context_tokens, 120);
+  assert.equal(result.context_growth, 500);
+});
+
+test("context_tokens suma input y cache_read", () => {
+  const result = metricFromMessage(msg({ tokens: { input: 30, output: 5, cache: { read: 7, write: 0 } } }), {});
+  assert.equal(result.context_tokens, 37);
+});

@@ -51,3 +51,50 @@ test("el JSONL detallado permanece intacto", () => {
   run(["1"]);
   assert.equal(readFileSync(source, "utf8"), before);
 });
+
+test("separación de registros legacy vs v2 y totales solo de v2", async () => {
+  const splitLog = join(root, "split-metrics.jsonl");
+  const legacy = {
+    timestamp: new Date().toISOString(),
+    session: "s-legacy",
+    provider: "openai",
+    model: "gpt-legacy",
+    cost: 1,
+    tokens: { input: 1000, output: 10, cache_read: 0 },
+    tools: 5,
+    loop_detected: true,
+    failed: false,
+  };
+  const v2 = {
+    schema_version: 2,
+    timestamp: new Date().toISOString(),
+    session: "s-v2",
+    provider: "openai",
+    model: "gpt-v2",
+    cost: 0.5,
+    tokens: { input: 100, output: 5, cache_read: 20 },
+    tools: 3,
+    tools_delta: 3,
+    delegations: 1,
+    compactions: 0,
+    duplicate_reads: 2,
+    loop_detected: true,
+    failed: false,
+  };
+  writeFileSync(splitLog, `${JSON.stringify(legacy)}\n${JSON.stringify(v2)}\n`);
+
+  const res = spawnSync(process.execPath, [script, "--stdout", "1"], {
+    encoding: "utf8",
+    env: { ...process.env, OPENCODE_METRICS_FILE: splitLog },
+  });
+  assert.equal(res.status, 0);
+  const out = JSON.parse(res.stdout);
+  assert.equal(out.messages, 2);
+  assert.equal(out.legacy_records, 1);
+  assert.equal(out.v2_records, 1);
+  assert.equal(out.tools, 3);
+  assert.equal(out.duplicate_reads, 2);
+  assert.equal(out.loop_messages, 1);
+  assert.equal(out.models["openai/gpt-legacy"].messages, 1);
+  assert.equal(out.models["openai/gpt-v2"].messages, 1);
+});

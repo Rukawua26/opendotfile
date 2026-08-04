@@ -1,6 +1,7 @@
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { metricFromMessage } from "../lib/session-metrics.js";
+import { readSignature } from "../lib/tool-efficiency.js";
 
 const HOME = process.env.HOME || "/tmp";
 const DATA_DIR = join(HOME, ".local/share/opencode/plugins-data");
@@ -20,12 +21,15 @@ function createSessionState() {
     delegations: 0,
     compactions: 0,
     reads_broad: 0,
+    duplicate_reads: 0,
+    readSeen: new Map(),
+    prevContextTokens: undefined,
     effort_mode: defaultEffort,
     verified: false,
     loop_detected: false,
     lastTool: null,
     sameToolCount: 0,
-    recorded: { tools: 0, delegations: 0, compactions: 0, reads_broad: 0 },
+    recorded: { tools: 0, delegations: 0, compactions: 0, reads_broad: 0, duplicate_reads: 0 },
   };
 }
 
@@ -43,6 +47,11 @@ function observeTool(state, input) {
     const args = input?.args || {};
     const path = String(args.path || args.filePath || args.file_path || "");
     if (broadPatterns.some((pattern) => pattern.test(path))) state.reads_broad += 1;
+
+    const signature = readSignature(input);
+    const previous = state.readSeen.get(signature) || 0;
+    state.readSeen.set(signature, previous + 1);
+    if (previous >= 1) state.duplicate_reads += 1;
   }
 
   if (toolName === state.lastTool) {
@@ -55,18 +64,20 @@ function observeTool(state, input) {
 }
 
 function metricState(state) {
-  if (!state.recorded) state.recorded = { tools: 0, delegations: 0, compactions: 0, reads_broad: 0 };
+  if (!state.recorded) state.recorded = { tools: 0, delegations: 0, compactions: 0, reads_broad: 0, duplicate_reads: 0 };
   const delta = {
     tools: state.tools - state.recorded.tools,
     delegations: state.delegations - state.recorded.delegations,
     compactions: state.compactions - state.recorded.compactions,
     reads_broad: state.reads_broad - state.recorded.reads_broad,
+    duplicate_reads: state.duplicate_reads - state.recorded.duplicate_reads,
   };
   state.recorded = {
     tools: state.tools,
     delegations: state.delegations,
     compactions: state.compactions,
     reads_broad: state.reads_broad,
+    duplicate_reads: state.duplicate_reads,
   };
   return delta;
 }
@@ -88,7 +99,10 @@ const sessionMetricsPlugin = async () => ({
   },
   event: async ({ event }) => {
     if (event.type === "session.compacted") {
-      stateFor(event.properties.sessionID).compactions += 1;
+      const state = stateFor(event.properties.sessionID);
+      state.compactions += 1;
+      state.readSeen.clear();
+      state.prevContextTokens = undefined;
       return;
     }
     if (event.type === "session.deleted") {
@@ -105,6 +119,13 @@ const sessionMetricsPlugin = async () => ({
          if (info.text.includes("execute-verified") || info.text.includes("/verify")) state.verified = true;
        }
        if (info.role !== "assistant" || !info.time?.completed) return;
+       const contextTokens = Number(info.tokens?.input || 0) + Number(info.tokens?.cache?.read || 0);
+       if (state.prevContextTokens !== undefined) {
+         state.context_growth = Math.max(0, contextTokens - state.prevContextTokens);
+       } else {
+         state.context_growth = 0;
+       }
+       state.prevContextTokens = contextTokens;
        const metric = metricFromMessage(info, { ...state, ...metricState(state) });
        state.loop_detected = false;
       if (!metric) return;

@@ -159,3 +159,61 @@ test("session.deleted no lanza error", async () => {
   });
   assert.equal(typeof plugin.event, "function");
 });
+
+test("registra schema_version 2 y duplicate_reads", async () => {
+  const plugin = await sessionMetricsPlugin();
+  const sessionID = `metrics-v2-${Date.now()}`;
+  const messageID = `${sessionID}-assistant`;
+  const logFile = TEST_LOG_FILE;
+  for (let i = 0; i < 3; i++) {
+    await plugin["tool.execute.before"](
+      { tool: "read", sessionID, args: { path: "src/x.js", offset: 1, limit: 10 } },
+      {},
+    );
+  }
+  await plugin.event({ event: { type: "message.updated", properties: { info: {
+    id: messageID,
+    sessionID,
+    role: "assistant",
+    time: { created: 1000, completed: 5000 },
+    tokens: { input: 10, output: 1, cache: { read: 5, write: 0 } },
+  } } } });
+
+  const record = readFileSync(logFile, "utf8").split("\n").filter(Boolean)
+    .map((line) => JSON.parse(line)).find((item) => item.message === messageID);
+  assert.equal(record.schema_version, 2);
+  assert.equal(record.duplicate_reads, 2);
+  assert.equal(record.context_tokens, 15);
+  assert.equal(record.tools_delta, 3);
+});
+
+test("context_growth se calcula entre mensajes", async () => {
+  const plugin = await sessionMetricsPlugin();
+  const sessionID = `metrics-growth-${Date.now()}`;
+  const logFile = TEST_LOG_FILE;
+  const mk = (id, input, cacheRead) => ({
+    id,
+    sessionID,
+    role: "assistant",
+    time: { created: 1000, completed: 5000 },
+    tokens: { input, output: 1, cache: { read: cacheRead, write: 0 } },
+  });
+  await plugin.event({ event: { type: "message.updated", properties: { info: mk(`${sessionID}-a`, 100, 20) } } });
+  await plugin.event({ event: { type: "message.updated", properties: { info: mk(`${sessionID}-b`, 100, 20) } } });
+  await plugin.event({ event: { type: "message.updated", properties: { info: mk(`${sessionID}-c`, 200, 50) } } });
+  const records = readFileSync(logFile, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  const a = records.find((r) => r.message === `${sessionID}-a`);
+  const b = records.find((r) => r.message === `${sessionID}-b`);
+  const c = records.find((r) => r.message === `${sessionID}-c`);
+  assert.equal(a.context_growth, 0);
+  assert.equal(b.context_growth, 0);
+  assert.equal(c.context_growth, 130);
+
+  await plugin.event({ event: { type: "session.compacted", properties: { sessionID } } });
+  const after = {};
+  await plugin["tool.execute.before"]({ tool: "read", sessionID, args: { path: "src/y.js", offset: 1, limit: 10 } }, after);
+  await plugin.event({ event: { type: "message.updated", properties: { info: mk(`${sessionID}-d`, 50, 5) } } });
+  const d = readFileSync(logFile, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l))
+    .find((r) => r.message === `${sessionID}-d`);
+  assert.equal(d.context_growth, 0);
+});

@@ -159,3 +159,57 @@ test("session.deleted elimina el estado usando properties.info.id", async () => 
   await plugin["tool.execute.after"]({ tool: "Fresh", sessionID: "deleted" }, output);
   assert.equal(output.metadata, undefined);
 });
+
+test("segunda lectura identica emite warning suave y tercera mas fuerte", async () => {
+  const plugin = await guardrailsPlugin();
+  const args = { path: "a.js" };
+
+  const out1 = { output: "content-a" };
+  await plugin["tool.execute.before"]({ tool: "read", sessionID: "dup", callID: "r1", args }, out1);
+  await plugin["tool.execute.after"]({ tool: "read", sessionID: "dup", callID: "r1" }, out1);
+  assert.equal(out1.metadata, undefined);
+
+  const out2 = { output: "content-b" };
+  await plugin["tool.execute.before"]({ tool: "read", sessionID: "dup", callID: "r2", args }, out2);
+  await plugin["tool.execute.after"]({ tool: "read", sessionID: "dup", callID: "r2" }, out2);
+  assert.equal(out2.metadata.guardrail_triggered, "duplicate_read");
+
+  const out3 = { output: "content-c" };
+  await plugin["tool.execute.before"]({ tool: "read", sessionID: "dup", callID: "r3", args }, out3);
+  await plugin["tool.execute.after"]({ tool: "read", sessionID: "dup", callID: "r3" }, out3);
+  assert.equal(out3.metadata.guardrail_triggered, "repeated_read");
+});
+
+test("lectura a rango distinto no dispara warning", async () => {
+  const plugin = await guardrailsPlugin();
+  await plugin["tool.execute.before"]({ tool: "read", sessionID: "range", callID: "r1", args: { path: "a.js", offset: 1, limit: 10 } }, {});
+  await plugin["tool.execute.before"]({ tool: "read", sessionID: "range", callID: "r2", args: { path: "a.js", offset: 11, limit: 10 } }, {});
+  const after = {};
+  await plugin["tool.execute.before"]({ tool: "read", sessionID: "range", callID: "r2" }, after);
+  await plugin["tool.execute.after"]({ tool: "read", sessionID: "range", callID: "r2" }, after);
+  assert.equal(after.metadata, undefined);
+});
+
+test("edit resetea el historial de lecturas", async () => {
+  const plugin = await guardrailsPlugin();
+  await plugin["tool.execute.before"]({ tool: "read", sessionID: "editreset", callID: "r1", args: { path: "a.js" } }, {});
+  await plugin["tool.execute.before"]({ tool: "edit", sessionID: "editreset", callID: "e1", args: { filePath: "a.js" } }, {});
+  const out = {};
+  await plugin["tool.execute.before"]({ tool: "read", sessionID: "editreset", callID: "r2", args: { path: "a.js" } }, out);
+  await plugin["tool.execute.after"]({ tool: "read", sessionID: "editreset", callID: "r2" }, out);
+  assert.equal(out.metadata, undefined);
+});
+
+test("warn_upres en 50 y 100 tools", async () => {
+  const plugin = await guardrailsPlugin();
+  const triggers = new Set();
+  for (let i = 0; i < 100; i++) {
+    const out = { output: "ok" };
+    await plugin["tool.execute.before"]({ tool: `T${i}`, sessionID: "totals-upto", callID: `c${i}` }, out);
+    await plugin["tool.execute.after"]({ tool: `T${i}`, sessionID: "totals-upto", callID: `c${i}` }, out);
+    for (const w of (out.metadata?.guardrail_warnings || [])) triggers.add(w.trigger);
+  }
+  assert.ok(triggers.has("total_calls"), "missing total_calls");
+  assert.ok(triggers.has("total_calls_50"), "missing total_calls_50");
+  assert.ok(triggers.has("total_calls_100"), "missing total_calls_100");
+});
