@@ -1,1 +1,0 @@
-../agents-library/engineering/technical-writer.md

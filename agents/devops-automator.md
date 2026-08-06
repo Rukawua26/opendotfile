@@ -1,1 +1,0 @@
-../agents-library/engineering/devops-automator.md

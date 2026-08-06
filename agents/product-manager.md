@@ -1,1 +1,0 @@
-../agents-library/product/product-manager.md

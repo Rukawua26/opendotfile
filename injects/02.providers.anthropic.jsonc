@@ -1,6 +1,0 @@
-// Inyectar proveedor Anthropic
-// Condición: tener ANTHROPIC_API_KEY en ~/.config/opencode/.env
-// Aplicar: opencode-inject apply providers.anthropic
-{
-  "model": "anthropic/claude-sonnet-4-20250514"
-}
