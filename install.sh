@@ -65,7 +65,7 @@ for item in "${SOURCE_DIR}"/* "${SOURCE_DIR}"/.[!.]* "${SOURCE_DIR}"/..?*; do
   [ -e "${item}" ] || continue
   name=$(basename "${item}")
   case "${name}" in
-    .git|node_modules|.env|README.md|install.sh|skills|spec|hooks) continue ;;
+    .git|node_modules|.env|README.md|install.sh|skills|spec|hooks|memory.db|kanban.json|backups|tools) continue ;;
   esac
   cp -a "${item}" "${TARGET_DIR}/"
 done
@@ -118,6 +118,7 @@ echo "Agentes activos restaurados: ${agent_count}"
 # Crear .env si no existe
 if [ ! -f "${TARGET_DIR}/.env" ]; then
   cp "${SOURCE_DIR}/.env.example" "${TARGET_DIR}/.env"
+  chmod 600 "${TARGET_DIR}/.env"
   echo "Se creo ${TARGET_DIR}/.env. Agrega tus API keys antes de usar MCP."
 fi
 

@@ -12,9 +12,9 @@ ultima-actualizacion: 2026-07-24
 > Matriz de cobertura para detectar solapamientos y agentes obsoletos. Revisar cada 3 meses con [[Runbook Revisar Agentes]].
 
 ## Última revisión
-- **Fecha:** 2026-07-24
-- **Revisor:** inventario activo + @software-architect
-- **Hallazgos:** selección operativa reducida de 35 a 16 agentes; roles no activos permanecen disponibles en `agents-library/`.
+- **Fecha:** 2026-08-06 (revalidación post-recuperación Feature 011)
+- **Revisor:** agente (recuperación segura config)
+- **Hallazgos:** 16 agentes activos revalidados tras recuperación; todos los symlinks resuelven y coinciden con la matriz. Revisión completa de uso programada para 2026-10.
 
 ## Matriz de Cobertura
 
@@ -69,5 +69,6 @@ ultima-actualizacion: 2026-07-24
 ## Historial de revisiones
 | Fecha | Cambios |
 |-------|---------|
+| 2026-08-06 | Revalidación post-recuperación Feature 011: 16 agentes OK, symlinks verificados |
 | 2026-07-24 | Inventario alineado con 16 agentes activos; eliminadas filas y solapamientos de agentes no activos |
 | 2026-07-13 | Auditoría inicial — matriz creada, 4 solapamientos detectados |

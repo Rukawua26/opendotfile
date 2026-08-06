@@ -1,0 +1,62 @@
+#!/bin/sh
+# Organic RDD pre-commit gate.
+# Blocks commits whose active approved receipt no longer passes the gate
+# (stale candidate bytes, incomplete manifest, or unapproved receipt).
+# Runs out of band: nothing here enters the model context.
+#
+# Exit codes:
+#   0  commit allowed (no receipt, mode disabled, gate pass, or lib missing)
+#   1  commit blocked by the Organic RDD gate
+#   2  unexpected setup error (fail closed but distinguishable from a gate denial)
+
+set -u
+
+GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+
+RECEIPT_FILE="$GIT_ROOT/.organic-rdd/receipt"
+[ -f "$RECEIPT_FILE" ] || exit 0
+
+REVIEW_ID="$(sed -n '1p' "$RECEIPT_FILE" 2>/dev/null | tr -d '[:space:]')"
+[ -n "$REVIEW_ID" ] || exit 0
+
+# Locate the Organic RDD library and store.
+# OPENCODE_ORGANIC_RDD_DIR is the store directory (same contract as the plugin).
+# OPENCODE_ORGANIC_RDD_LIB overrides the library path when the store and the
+# config do not live together.
+LIB_PATH="${OPENCODE_ORGANIC_RDD_LIB:-${HOME:-}/.config/opencode/lib/organic-rdd.js}"
+if [ ! -f "$LIB_PATH" ]; then
+  exit 0
+fi
+
+NODE_BIN="$(command -v node 2>/dev/null)" || exit 0
+
+ORGANIC_RDD_LIB_PATH="$LIB_PATH" \
+ORGANIC_RDD_STORE_DIR="${OPENCODE_ORGANIC_RDD_DIR:-}" \
+"$NODE_BIN" --input-type=module - "$REVIEW_ID" "$GIT_ROOT" <<'EOF'
+import { pathToFileURL } from "node:url";
+
+const { createOrganicRdd } = await import(pathToFileURL(process.env.ORGANIC_RDD_LIB_PATH).href);
+
+const [reviewID, gitRoot] = process.argv.slice(2);
+const rdd = createOrganicRdd({ storeDir: process.env.ORGANIC_RDD_STORE_DIR || undefined });
+let result;
+try {
+  result = rdd.gate(reviewID, gitRoot, { strict_manifest: true, stagedOnly: true });
+} catch (error) {
+  console.error(`[organic-rdd] gate failed unexpectedly: ${error.message || error}`);
+  process.exit(2);
+}
+const allowed = result.decision === "pass" || result.status === "unmanaged";
+if (allowed) process.exit(0);
+console.error(`[organic-rdd] commit blocked: ${result.reason}`);
+if (result.manifest_warnings?.length) {
+  console.error(`[organic-rdd] manifest warnings:`);
+  for (const warning of result.manifest_warnings) {
+    console.error(`  - ${warning.code}: ${(warning.files || []).join(", ")}`);
+  }
+}
+console.error(`[organic-rdd] next action: ${result.next_action || "Start a new review for the current candidate bytes."}`);
+process.exit(1);
+EOF
+
+exit $?

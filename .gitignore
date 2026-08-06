@@ -5,3 +5,7 @@ docs/.obsidian/workspace.json
 docs/.obsidian/workspace-mobile.json
 docs/.obsidian/cache/
 docs/.trash/
+
+# Estado privado — nunca versionado
+kanban.json
+memory.db

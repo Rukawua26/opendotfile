@@ -10,7 +10,7 @@
 
 ## ✨ Qué es
 
-Configuración portable de OpenCode con 16 agentes, 21 skills, plugins, perfiles y MCP servers. Todo el ciclo SDD (spec → plan → tasks → implement → verify) con review por riesgo mediante Organic RDD.
+Configuración portable de OpenCode con 16 agentes, 15 skills, 5 plugins esenciales, perfiles y MCP servers. Todo el ciclo SDD (spec → plan → tasks → implement → verify) con review por riesgo mediante Organic RDD.
 
 ### Cómo funciona
 
@@ -170,11 +170,11 @@ flowchart TB
 
 **Plugins esenciales** (`plugins/`): `guardrails.js` (anti-loop), `checkpoints.js` (snapshots), `validator.js` (API keys), `session-metrics.js` (métricas), `organic-rdd.js` (review por riesgo).
 
-**Plugins opcionales** (`plugins-optional/`, por perfil): `personalities.js`, `kanban.js`, `sandbox.js`, `auto-memory.js`.
+**Plugins opcionales** (`plugins-optional/`, pendientes de hardening): `personalities.js`, `kanban.js`, `sandbox.js`, `auto-memory.js`.
 
-**Deshabilitados**: `hooks.js`, `memory-v2.js` (incompatible con el runtime Bun de OpenCode).
+**Retirado**: `memory-v2.js` (incompatible con Bun). Reemplazado por `memory-adapter` MCP (`node:sqlite`, sin deps externas). MCP read-only; escrituras solo vía CLI explícita.
 
-**MCP servers** (`mcp/`): `local-model-router` (Ollama, activo por defecto), `memory-adapter` (memoria persistente, work), `context7` (docs de librerías), `diagram-generator` (Draw.io/Mermaid), `playwright` (off por defecto).
+**MCP servers** (`mcp/`): `local-model-router` (Ollama, activo por defecto), `memory-adapter` (memoria persistente, work), `context7` (docs de librerías, work), `diagram-generator` (Draw.io/Mermaid, work), `playwright` (off por defecto).
 
 ---
 
