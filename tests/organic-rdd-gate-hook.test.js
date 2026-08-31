@@ -1,12 +1,11 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
-  OrganicRddError,
   clearPointer,
   createOrganicRdd,
   pointerPath,
@@ -176,6 +175,86 @@ test("staged-only gate blocks a staged file outside the manifest", () => {
   const result = rdd.gate(receipt.review_id, project, { strict_manifest: true, stagedOnly: true });
   assert.equal(result.decision, "fail");
   assert.equal(result.reason, "manifest_incomplete");
+});
+
+test("the hook blocks when staged bytes diverge from reviewed worktree bytes", () => {
+  const { root, project, store, file, rdd } = fixture();
+  initGit(project);
+  file("commands/a.md", "staged-A");
+  gitStage(project, ".");
+  execFileSync("git", ["commit", "-qm", "init"], { cwd: project, stdio: "pipe" });
+
+  writeFileSync(join(project, "commands", "a.md"), "worktree-B");
+  const receipt = rdd.start({ project_path: project, feature_id: "001", files: ["commands/a.md"] });
+  approve(receipt, rdd);
+  assert.equal(readPointer(project), receipt.review_id);
+
+  const result = spawnSync("sh", [HOOK_PATH], {
+    cwd: project,
+    env: {
+      ...process.env,
+      OPENCODE_ORGANIC_RDD_LIB: join(root, "missing-unused"),
+      OPENCODE_ORGANIC_RDD_DIR: store,
+    },
+    encoding: "utf8",
+  });
+  // Library override points to a missing file; without it the hook cannot even
+  // run, which is ALSO fail-closed (exit 2). For the divergence case we need
+  // the real library, so rerun with the repo's lib.
+  assert.notEqual(result.status, 0, "missing lib must fail closed");
+
+  const result2 = spawnSync("sh", [HOOK_PATH], {
+    cwd: project,
+    env: {
+      ...process.env,
+      OPENCODE_ORGANIC_RDD_LIB: join(resolve(fileURLToPath(new URL("..", import.meta.url))), "lib", "organic-rdd.js"),
+      OPENCODE_ORGANIC_RDD_DIR: store,
+    },
+    encoding: "utf8",
+  });
+  assert.equal(result2.status, 1);
+  assert.match(result2.stderr, /differ between index and working tree/);
+});
+
+test("the hook fails closed when the gate library is missing", () => {
+  const { root, project } = fixture();
+  initGit(project);
+  writePointer(project, "r_1_valid");
+  const result = spawnSync("sh", [HOOK_PATH], {
+    cwd: project,
+    env: {
+      ...process.env,
+      OPENCODE_ORGANIC_RDD_LIB: join(root, "missing.js"),
+    },
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /gate library not found/);
+});
+
+test("the hook respects disabled mode even with staged/worktree divergence", () => {
+  const { project, store, file, rdd } = fixture();
+  initGit(project);
+  rdd.setMode("disabled");
+  file("commands/a.md", "staged-A");
+  gitStage(project, ".");
+  execFileSync("git", ["commit", "-qm", "init"], { cwd: project, stdio: "pipe" });
+
+  writeFileSync(join(project, "commands", "a.md"), "worktree-B");
+  const receipt = rdd.start({ project_path: project, feature_id: "001", files: ["commands/a.md"] });
+  assert.equal(receipt.status, "unmanaged");
+  writePointer(project, receipt.review_id);
+
+  const result = spawnSync("sh", [HOOK_PATH], {
+    cwd: project,
+    env: {
+      ...process.env,
+      OPENCODE_ORGANIC_RDD_LIB: join(resolve(fileURLToPath(new URL("..", import.meta.url))), "lib", "organic-rdd.js"),
+      OPENCODE_ORGANIC_RDD_DIR: store,
+    },
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0);
 });
 
 test("the gate a pre-commit hook would call skips when review mode is disabled", () => {

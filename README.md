@@ -6,6 +6,14 @@
 
 </div>
 
+> [!CAUTION]
+> **Repositorio historicico (archivado).** OpenDotfile se fusionó en
+> [OpenCode Ecosystem](https://github.com/Rukawua26/opencode-ecosystem),
+> que ahora es la unica fuente canónica (instalador, perfiles, plugins,
+> memoria, router y Organic RDD con lineage/receipts/refuter). No ejecutes
+> `install.sh` desde este repositorio para nuevas instalaciones; el contenido
+> se conserva únicamente como referencia histórica.
+
 ---
 
 ## ✨ Qué es

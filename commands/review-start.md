@@ -19,3 +19,4 @@ Rules:
 - In Git repositories, report any `manifest_warnings` returned by the receipt; these are changed Git files outside the explicit manifest.
 - Report the review ID, candidate ID, tier, classification reasons, and required lenses.
 - A disabled result is `unmanaged`, never approved.
+- For a human-applied correction, use `parent_review_id`; the successor must cover exactly the same candidate files, and each lineage may contain at most two attempts.

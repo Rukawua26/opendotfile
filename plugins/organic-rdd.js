@@ -70,10 +70,10 @@ export const organicRddPlugin = async () => {
       }),
 
       review_capture: tool({
-        description: "Capture or replace one required review lens result for the frozen candidate.",
+        description: "Capture or replace one required review lens result, or an optional refuter result, for the frozen candidate.",
         args: {
           review_id: tool.schema.string().describe("Canonical review receipt ID"),
-          lens: tool.schema.enum(["code-review", "verifier", "security-review", "architecture-review"]),
+          lens: tool.schema.enum(["code-review", "verifier", "security-review", "architecture-review", "refuter"]),
           status: tool.schema.enum(["pass", "fail", "blocked"]),
           summary: tool.schema.string().optional().default("").describe("Concise findings summary"),
           evidence: tool.schema.array(tool.schema.string()).optional().default([]).describe("Commands, files, or finding references"),

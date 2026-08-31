@@ -25,20 +25,50 @@ REVIEW_ID="$(sed -n '1p' "$RECEIPT_FILE" 2>/dev/null | tr -d '[:space:]')"
 # config do not live together.
 LIB_PATH="${OPENCODE_ORGANIC_RDD_LIB:-${HOME:-}/.config/opencode/lib/organic-rdd.js}"
 if [ ! -f "$LIB_PATH" ]; then
-  exit 0
+  # A fingerprint exists but the runtime is gone: fail closed, the repo opted
+  # into the gate and must not silently lose it.
+  echo "[organic-rdd] gate library not found: $LIB_PATH" >&2
+  echo "[organic-rdd] reinstall the ecosystem or remove .organic-rdd/receipt" >&2
+  exit 2
 fi
 
-NODE_BIN="$(command -v node 2>/dev/null)" || exit 0
+NODE_BIN="$(command -v node 2>/dev/null)" || { echo "[organic-rdd] node not found; gate cannot run" >&2; exit 2; }
 
 ORGANIC_RDD_LIB_PATH="$LIB_PATH" \
 ORGANIC_RDD_STORE_DIR="${OPENCODE_ORGANIC_RDD_DIR:-}" \
 "$NODE_BIN" --input-type=module - "$REVIEW_ID" "$GIT_ROOT" <<'EOF'
+import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 const { createOrganicRdd } = await import(pathToFileURL(process.env.ORGANIC_RDD_LIB_PATH).href);
 
 const [reviewID, gitRoot] = process.argv.slice(2);
 const rdd = createOrganicRdd({ storeDir: process.env.ORGANIC_RDD_STORE_DIR || undefined });
+
+// The receipt certifies worktree bytes, but the commit ships STAGED bytes.
+// Refuse when any candidate path has unstaged divergences, otherwise Git would
+// commit content the review never saw.
+try {
+  const status = rdd.status(reviewID, gitRoot);
+  const paths = status.current_mode === "disabled" ? [] : (status.candidate_files || []).map((f) => f.path);
+  if (paths.length) {
+    const diverged = execFileSync(
+      "git",
+      ["diff", "--name-only", "--", ...paths],
+      { cwd: gitRoot, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+    ).trim();
+    if (diverged) {
+      console.error("[organic-rdd] commit blocked: candidate files differ between index and working tree:");
+      for (const file of diverged.split("\n")) console.error(`  - ${file}`);
+      console.error("[organic-rdd] next action: stage the reviewed bytes (git add) or restore the index, then retry.");
+      process.exit(1);
+    }
+  }
+} catch (error) {
+  console.error(`[organic-rdd] staged-divergence check failed: ${error.message || error}`);
+  process.exit(2);
+}
+
 let result;
 try {
   result = rdd.gate(reviewID, gitRoot, { strict_manifest: true, stagedOnly: true });

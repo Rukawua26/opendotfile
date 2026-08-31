@@ -612,7 +612,7 @@ test("parent_review_id from a different project is rejected", () => {
   );
 });
 
-test("attempt overrides parent-derived attempt number", () => {
+test("attempt overrides are monotonic within the two-attempt limit", () => {
   const { project, file, rdd } = fixture();
   file("commands/a.md");
   const parent = rdd.start({ project_path: project, feature_id: "parent", files: ["commands/a.md"] });
@@ -620,9 +620,215 @@ test("attempt overrides parent-derived attempt number", () => {
   const child = rdd.start({
     project_path: project, feature_id: "child", files: ["commands/a.md"],
     parent_review_id: parent.review_id,
-    attempt: 5,
+    attempt: 2,
   });
-  assert.equal(child.attempt, 5);
+  assert.equal(child.attempt, 2);
+});
+
+test("successor cannot expand or shrink the parent manifest", () => {
+  const { project, file, rdd } = fixture();
+  file("docs/a.md", "a");
+  file("docs/b.md", "b");
+  const parent = rdd.start({ project_path: project, feature_id: "parent", files: ["docs/a.md", "docs/b.md"] });
+  writeFileSync(join(project, "docs/a.md"), "changed");
+  file("docs/c.md", "c");
+
+  assert.throws(
+    () => rdd.start({
+      project_path: project,
+      feature_id: "expanded",
+      files: ["docs/a.md", "docs/b.md", "docs/c.md"],
+      parent_review_id: parent.review_id,
+    }),
+    (error) => error instanceof OrganicRddError && error.code === "lineage_scope_mismatch",
+  );
+  assert.throws(
+    () => rdd.start({
+      project_path: project,
+      feature_id: "shrunk",
+      files: ["docs/a.md"],
+      parent_review_id: parent.review_id,
+    }),
+    (error) => error instanceof OrganicRddError && error.code === "lineage_scope_mismatch",
+  );
+});
+
+test("successor preserves scope while accepting corrected bytes", () => {
+  const { project, file, rdd } = fixture();
+  file("docs/a.md", "before");
+  file("docs/b.md", "stable");
+  const parent = rdd.start({ project_path: project, feature_id: "parent", files: ["docs/a.md", "docs/b.md"] });
+  writeFileSync(join(project, "docs/a.md"), "after");
+
+  const child = rdd.start({
+    project_path: project,
+    feature_id: "successor",
+    files: ["docs/b.md", "docs/a.md"],
+    parent_review_id: parent.review_id,
+  });
+
+  assert.equal(child.parent_review_id, parent.review_id);
+  assert.equal(child.attempt, 2);
+  assert.deepEqual(child.candidate_files.map((file) => file.path), ["docs/a.md", "docs/b.md"]);
+});
+
+test("lineage rejects a third attempt", () => {
+  const { project, file, rdd } = fixture();
+  file("docs/a.md", "one");
+  const parent = rdd.start({ project_path: project, feature_id: "parent", files: ["docs/a.md"] });
+  writeFileSync(join(project, "docs/a.md"), "two");
+  const child = rdd.start({
+    project_path: project,
+    feature_id: "child",
+    files: ["docs/a.md"],
+    parent_review_id: parent.review_id,
+  });
+  writeFileSync(join(project, "docs/a.md"), "three");
+
+  assert.throws(
+    () => rdd.start({
+      project_path: project,
+      feature_id: "grandchild",
+      files: ["docs/a.md"],
+      parent_review_id: child.review_id,
+    }),
+    (error) => error instanceof OrganicRddError && error.code === "lineage_attempt_limit",
+  );
+});
+
+test("lineage rejects non-monotonic, excessive, and non-initial explicit attempts", () => {
+  const { project, file, rdd } = fixture();
+  file("docs/a.md", "one");
+  const parent = rdd.start({ project_path: project, feature_id: "parent", files: ["docs/a.md"] });
+  writeFileSync(join(project, "docs/a.md"), "two");
+
+  assert.throws(
+    () => rdd.start({
+      project_path: project,
+      feature_id: "same-attempt",
+      files: ["docs/a.md"],
+      parent_review_id: parent.review_id,
+      attempt: 1,
+    }),
+    (error) => error instanceof OrganicRddError && error.code === "lineage_invalid",
+  );
+  assert.throws(
+    () => rdd.start({
+      project_path: project,
+      feature_id: "beyond-limit",
+      files: ["docs/a.md"],
+      parent_review_id: parent.review_id,
+      attempt: 3,
+    }),
+    (error) => error instanceof OrganicRddError && error.code === "lineage_attempt_limit",
+  );
+  assert.throws(
+    () => rdd.start({
+      project_path: project,
+      feature_id: "root-non-initial",
+      files: ["docs/a.md"],
+      attempt: 2,
+    }),
+    (error) => error instanceof OrganicRddError && error.code === "lineage_invalid",
+  );
+});
+
+test("stored successor with an incompatible scope fails validation and gate", () => {
+  const { project, file, store, rdd } = fixture();
+  file("docs/a.md", "a");
+  file("docs/b.md", "b");
+  const parent = rdd.start({ project_path: project, feature_id: "parent", files: ["docs/a.md"] });
+  const child = rdd.start({ project_path: project, feature_id: "child", files: ["docs/b.md"] });
+  const childPath = join(store, "reviews", `${child.review_id}.json`);
+  const stored = JSON.parse(readFileSync(childPath, "utf8"));
+  stored.parent_review_id = parent.review_id;
+  stored.root_review_id = parent.review_id;
+  stored.attempt = 2;
+  writeFileSync(childPath, JSON.stringify(stored));
+
+  const diagnostic = rdd.validate(child.review_id, project);
+  assert.equal(diagnostic.lineage_integrity, "scope_mismatch");
+  assert.equal(diagnostic.required_action, "resolve_lineage");
+  const gate = rdd.gate(child.review_id, project);
+  assert.equal(gate.decision, "fail");
+  assert.equal(gate.reason, "lineage_invalid");
+  assert.equal(gate.status, "blocked");
+});
+
+test("an invalid ancestor prevents a compatible child from passing gate", () => {
+  const { project, file, store, rdd } = fixture();
+  file("docs/a.md", "a");
+  const root = rdd.start({ project_path: project, feature_id: "root", files: ["docs/a.md"] });
+  const invalidParent = rdd.start({ project_path: project, feature_id: "invalid-parent", files: ["docs/a.md"] });
+  const child = rdd.start({ project_path: project, feature_id: "child", files: ["docs/a.md"] });
+
+  const parentPath = join(store, "reviews", `${invalidParent.review_id}.json`);
+  const storedParent = JSON.parse(readFileSync(parentPath, "utf8"));
+  storedParent.parent_review_id = root.review_id;
+  storedParent.root_review_id = root.review_id;
+  storedParent.attempt = 1;
+  writeFileSync(parentPath, JSON.stringify(storedParent));
+
+  assert.throws(
+    () => rdd.start({
+      project_path: project,
+      feature_id: "blocked-successor",
+      files: ["docs/a.md"],
+      parent_review_id: invalidParent.review_id,
+    }),
+    (error) => error instanceof OrganicRddError && error.code === "lineage_invalid",
+  );
+
+  const childPath = join(store, "reviews", `${child.review_id}.json`);
+  const storedChild = JSON.parse(readFileSync(childPath, "utf8"));
+  storedChild.parent_review_id = invalidParent.review_id;
+  storedChild.root_review_id = root.review_id;
+  storedChild.attempt = 2;
+  writeFileSync(childPath, JSON.stringify(storedChild));
+
+  assert.equal(rdd.validate(invalidParent.review_id, project).lineage_integrity, "attempt_non_monotonic");
+  assert.equal(rdd.validate(child.review_id, project).lineage_integrity, "ancestor_invalid");
+  assert.equal(rdd.gate(child.review_id, project).decision, "fail");
+  assert.equal(rdd.status(child.review_id, project).effective_status, "blocked");
+});
+
+test("cyclic lineage fails closed", () => {
+  const { project, file, store, rdd } = fixture();
+  file("docs/a.md", "a");
+  file("docs/b.md", "b");
+  const first = rdd.start({ project_path: project, feature_id: "first", files: ["docs/a.md"] });
+  const second = rdd.start({ project_path: project, feature_id: "second", files: ["docs/b.md"] });
+
+  for (const [receipt, parent] of [[first, second], [second, first]]) {
+    const path = join(store, "reviews", `${receipt.review_id}.json`);
+    const stored = JSON.parse(readFileSync(path, "utf8"));
+    stored.parent_review_id = parent.review_id;
+    stored.root_review_id = parent.review_id;
+    stored.attempt = 2;
+    writeFileSync(path, JSON.stringify(stored));
+  }
+
+  assert.equal(rdd.validate(first.review_id, project).lineage_integrity, "lineage_cycle");
+  assert.equal(rdd.gate(first.review_id, project).decision, "fail");
+});
+
+test("legacy receipt with a historical high attempt remains readable but cannot pass gate", () => {
+  const { project, file, store, rdd } = fixture();
+  file("docs/a.md", "a");
+  const receipt = rdd.start({ project_path: project, feature_id: "legacy", files: ["docs/a.md"] });
+  const receiptPath = join(store, "reviews", `${receipt.review_id}.json`);
+  const stored = JSON.parse(readFileSync(receiptPath, "utf8"));
+  stored.attempt = 5;
+  writeFileSync(receiptPath, JSON.stringify(stored));
+
+  const status = rdd.status(receipt.review_id, project);
+  assert.equal(status.attempt, 5);
+  assert.equal(status.lineage_integrity, "invalid_root_attempt");
+  const diagnostic = rdd.validate(receipt.review_id, project);
+  assert.equal(diagnostic.lineage_integrity, "invalid_root_attempt");
+  const gate = rdd.gate(receipt.review_id, project);
+  assert.equal(gate.decision, "fail");
+  assert.equal(gate.reason, "lineage_invalid");
 });
 
 test("open blocker finding prevents finalization", () => {
@@ -750,6 +956,77 @@ test("reviewer_id and execution_id are stored as metadata", () => {
   assert.equal(lens.execution_id, "exec-001");
 });
 
+test("refuter can be captured as an optional lens without becoming required", () => {
+  const { project, file, rdd } = fixture();
+  file("commands/example.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["commands/example.md"] });
+  assert.deepEqual(receipt.required_lenses, ["code-review"]);
+
+  const result = rdd.capture({
+    review_id: receipt.review_id,
+    lens: "refuter",
+    status: "pass",
+    summary: "No blocker claims survive refutation",
+    evidence: ["review-refuter returned an empty results list"],
+    reviewer_id: "review-refuter",
+    execution_id: "refute-001",
+  });
+
+  const refuter = result.captured_lenses.find((entry) => entry.lens === "refuter");
+  assert.equal(refuter.status, "pass");
+  assert.equal(refuter.reviewer_id, "review-refuter");
+  assert.deepEqual(result.required_lenses, ["code-review"]);
+  assert.doesNotThrow(() => rdd.validate(receipt.review_id));
+});
+
+test("a failed optional refuter blocks finalization", () => {
+  const { project, file, rdd } = fixture();
+  file("commands/example.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["commands/example.md"] });
+
+  rdd.capture({
+    review_id: receipt.review_id,
+    lens: "refuter",
+    status: "fail",
+    summary: "Refutation could not be completed",
+    evidence: ["review-refuter reported the target context as unavailable"],
+  });
+  rdd.capture({
+    review_id: receipt.review_id,
+    lens: "code-review",
+    status: "pass",
+    summary: "Manual review complete",
+    evidence: ["commands/example.md inspected"],
+  });
+  rdd.verify({ review_id: receipt.review_id, status: "pass", evidence: ["node --test focused"] });
+
+  assert.equal(rdd.finalize(receipt.review_id).status, "blocked");
+});
+
+test("a blocked optional refuter also blocks finalization", () => {
+  const { project, file, rdd } = fixture();
+  file("commands/example.md");
+  const receipt = rdd.start({ project_path: project, feature_id: "docs", files: ["commands/example.md"] });
+
+  rdd.capture({
+    review_id: receipt.review_id,
+    lens: "refuter",
+    status: "blocked",
+    summary: "Refutation was unavailable",
+    evidence: ["review-refuter could not inspect the frozen target"],
+  });
+  rdd.capture({
+    review_id: receipt.review_id,
+    lens: "code-review",
+    status: "pass",
+    summary: "Manual review complete",
+    evidence: ["commands/example.md inspected"],
+  });
+  rdd.verify({ review_id: receipt.review_id, status: "pass", evidence: ["node --test focused"] });
+
+  assert.equal(rdd.finalize(receipt.review_id).status, "blocked");
+});
+
 test("blocking test placeholder for future gate integration", () => {
   const { project, file, rdd } = fixture();
   file("docs/readme.md");
@@ -806,9 +1083,9 @@ test("validate detects blocked lineage from missing parent", () => {
   git(["add", "."], project);
   git(["commit", "-m", "initial"], project);
   const parent = rdd.start({ project_path: project, feature_id: "parent", files: ["commands/parent.md"] });
-  file("commands/child.md");
+  file("commands/parent.md", "changed");
   const child = rdd.start({
-    project_path: project, feature_id: "child", files: ["commands/child.md"],
+    project_path: project, feature_id: "child", files: ["commands/parent.md"],
     parent_review_id: parent.review_id,
   });
   writeFileSync(join(store, "reviews", `${parent.review_id}.json`), "{}");

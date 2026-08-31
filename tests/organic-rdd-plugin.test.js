@@ -34,6 +34,18 @@ test("plugin exposes the negotiated tool surface and structured results", async 
     assert.equal(started.ok, true);
     assert.equal(started.result.status, "approved");
 
+    const refuter = JSON.parse(await plugin.tool.review_capture.execute({
+      review_id: started.result.review_id,
+      lens: "refuter",
+      status: "pass",
+      summary: "No blocker claims survive refutation",
+      evidence: ["review-refuter returned no corroborated blockers"],
+      reviewer_id: "review-refuter",
+      execution_id: "refute-001",
+    }, { directory: project }));
+    assert.equal(refuter.ok, true);
+    assert.equal(refuter.result.captured_lenses.some((entry) => entry.lens === "refuter"), true);
+
     const otherProject = join(root, "other-project");
     mkdirSync(otherProject);
     const mismatch = JSON.parse(await plugin.tool.review_gate.execute({
